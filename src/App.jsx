@@ -74,11 +74,113 @@ function About() {
   )
 }
 
+function EventDetailModal({ event, isOpen, onClose, getPeriodColor }) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
+
+  if (!isOpen || !event) return null
+
+  const periodColor = getPeriodColor(event.period)
+
+  return (
+    <div 
+      className="event-modal-overlay" 
+      onClick={onClose}
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="modal-title"
+    >
+      <div 
+        className="event-modal-content" 
+        onClick={(e) => e.stopPropagation()}
+        style={{ '--modal-color': periodColor }}
+      >
+        <button 
+          className="event-modal-close" 
+          onClick={onClose}
+          aria-label="Đóng modal"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
+        
+        <div className="event-modal-header">
+          <div className="event-modal-badge" style={{ backgroundColor: periodColor }}>
+            {event.period}
+          </div>
+          <h2 id="modal-title" className="event-modal-title">{event.title}</h2>
+          <div className="event-modal-meta">
+            <span className="meta-item">
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1v6l4 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+              {event.year < 0 ? `${Math.abs(event.year)} TCN` : event.year}
+            </span>
+            {event.dynasty && (
+              <span className="meta-item">
+                <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 3h12M2 8h12M2 13h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+                {event.dynasty}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="event-modal-body">
+          <div className="event-modal-section">
+            <h3 className="section-title">Mô tả</h3>
+            <p className="section-content">{event.description}</p>
+          </div>
+
+          {event.details && (
+            <div className="event-modal-section">
+              <h3 className="section-title">Chi tiết</h3>
+              <div className="section-content details-content">
+                {event.details.split('\n').map((para, idx) => (
+                  <p key={idx}>{para}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!event.details && (
+            <div className="event-modal-placeholder">
+              <p>Nội dung chi tiết sẽ được thêm vào đây.</p>
+              <p className="details-hint">Bạn có thể chỉnh sửa trong file <code>src/data/events.js</code> để thêm nội dung chi tiết cho sự kiện này.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Timeline({ events }) {
   const [period, setPeriod] = useState('all')
   const [dynasty, setDynasty] = useState('all')
-  const [zoom, setZoom] = useState(1)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [selectedEvent, setSelectedEvent] = useState(null)
   const railRef = useRef(null)
 
   const filtered = useMemo(() => {
@@ -90,23 +192,32 @@ function Timeline({ events }) {
 
   useEffect(() => {
     const el = railRef.current
-    if (!el) return
-    el.style.transform = `scale(${zoom})`
-    el.style.transformOrigin = 'left center'
-  }, [zoom])
-
-  useEffect(() => {
-    const el = railRef.current
     if (!el || filtered.length === 0) return
     const active = el.querySelector(`[data-index="${activeIndex}"]`)
     if (active) {
-      active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      active.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
     }
   }, [activeIndex, filtered])
 
   const dynOptions = useMemo(() => ['all', ...Array.from(new Set(events.map(e => e.dynasty))).filter(Boolean)], [events])
 
-  const active = filtered[activeIndex]
+  const getPeriodColor = (period) => {
+    const colors = {
+      'Cổ đại': '#8b5cf6',
+      'Phong kiến': '#3b82f6',
+      'Cận đại': '#f59e0b',
+      'Hiện đại': '#ef4444',
+    }
+    return colors[period] || '#6b7280'
+  }
+
+  const openDetails = (event) => {
+    setSelectedEvent(event)
+  }
+
+  const closeDetails = () => {
+    setSelectedEvent(null)
+  }
 
   return (
     <section id="timeline" className="timeline-section section" aria-labelledby="timeline-title">
@@ -127,45 +238,66 @@ function Timeline({ events }) {
                 {dynOptions.map(d => <option key={d} value={d}>{d === 'all' ? 'Tất cả' : d}</option>)}
               </select>
             </label>
-            <label className="control">
-              <span>Zoom</span>
-              <input type="range" min="0.6" max="1.6" step="0.1" value={zoom} onChange={e => setZoom(Number(e.target.value))} aria-label="Thu phóng timeline" />
-            </label>
           </div>
         </div>
 
-        <div className="timeline-wrap" tabIndex={0} aria-label="Kéo ngang để xem thêm mốc thời gian" onKeyDown={e => {
-          if (e.key === 'ArrowRight') setActiveIndex(i => Math.min(i + 1, filtered.length - 1))
-          if (e.key === 'ArrowLeft') setActiveIndex(i => Math.max(i - 1, 0))
-        }}>
-          <div id="timelineRail" className="timeline-rail" role="list" ref={railRef}>
-            {filtered.map((e, idx) => (
-              <div className="tick" role="listitem" key={e.id} data-index={idx}>
-                <div
-                  className="dot"
-                  tabIndex={0}
-                  aria-current={idx === activeIndex}
-                  aria-label={`${e.year}: ${e.title}`}
-                  onClick={() => setActiveIndex(idx)}
-                  onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') setActiveIndex(idx) }}
-                />
-                <div className="year">{e.year}</div>
-                <div className="label">{e.title}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="event-details" aria-live="polite" aria-atomic="true">
-          <div className="details-card">
-            <h3 id="detailsTitle">{active ? active.title : 'Chọn một sự kiện trên timeline'}</h3>
-            <p className="details-meta">{active ? `${active.year} • ${active.dynasty || '—'} • ${active.period}` : ''}</p>
-            <p className="details-desc">{active ? active.description : ''}</p>
-            <div className="details-actions">
-              <button className="btn btn-ghost" onClick={() => setActiveIndex(i => Math.max(i - 1, 0))} aria-label="Sự kiện trước">← Trước</button>
-              <button className="btn btn-ghost" onClick={() => setActiveIndex(i => Math.min(i + 1, filtered.length - 1))} aria-label="Sự kiện sau">Sau →</button>
+        <div className="timeline-container">
+          <div className="timeline-wrap" tabIndex={0} aria-label="Kéo dọc để xem thêm mốc thời gian" onKeyDown={e => {
+            if (e.key === 'ArrowDown') setActiveIndex(i => Math.min(i + 1, filtered.length - 1))
+            if (e.key === 'ArrowUp') setActiveIndex(i => Math.max(i - 1, 0))
+          }}>
+            <div className="timeline-line"></div>
+            <div id="timelineRail" className="timeline-rail" role="list" ref={railRef}>
+              {filtered.map((e, idx) => (
+                <div 
+                  className={`timeline-item ${idx === activeIndex ? 'active' : ''}`} 
+                  role="listitem" 
+                  key={e.id} 
+                  data-index={idx}
+                  style={{ '--period-color': getPeriodColor(e.period) }}
+                >
+                  <div className="timeline-item-content">
+                    <div
+                      className="timeline-dot"
+                      tabIndex={0}
+                      aria-current={idx === activeIndex}
+                      aria-label={`${e.year}: ${e.title}`}
+                      onClick={() => setActiveIndex(idx)}
+                      onKeyDown={ev => { if (ev.key === 'Enter' || ev.key === ' ') setActiveIndex(idx) }}
+                    >
+                      <div className="dot-inner"></div>
+                    </div>
+                    <div className="timeline-card">
+                      <div className="timeline-year">{e.year < 0 ? `${Math.abs(e.year)} TCN` : e.year}</div>
+                      <div className="timeline-title">{e.title}</div>
+                      <div className="timeline-meta">
+                        {e.dynasty && <span className="timeline-dynasty">{e.dynasty}</span>}
+                        <span className="timeline-period">{e.period}</span>
+                      </div>
+                      <div className="timeline-description">{e.description}</div>
+                      <button 
+                        className="timeline-details-btn"
+                        onClick={() => openDetails(e)}
+                        aria-label={`Xem chi tiết cho ${e.title}`}
+                      >
+                        <span>Chi tiết</span>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                          <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+
+          <EventDetailModal 
+            event={selectedEvent}
+            isOpen={selectedEvent !== null}
+            onClose={closeDetails}
+            getPeriodColor={getPeriodColor}
+          />
         </div>
       </div>
     </section>
