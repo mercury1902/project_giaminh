@@ -1,20 +1,56 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { events as allEvents, dynasties, periods } from './data/events.js'
+import AiHistory from './pages/AiHistory'
 
 function Header() {
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  const scrollTo = (id) => {
+    if (!isHome) return // Let the Link to="/" handle the navigation, then hash will work natively if present
+    const element = document.querySelector(id)
+    if (element) element.scrollIntoView({ behavior: 'smooth' })
+  }
+
   return (
     <header className="site-header" role="banner">
       <div className="container header-inner">
-        <div className="brand" aria-label="Lịch sử Việt Nam">
+        <Link to="/" className="brand" aria-label="Lịch sử Việt Nam">
           <div className="logo" aria-hidden="true">VN</div>
           <span className="brand-text">Lịch sử Việt Nam</span>
-        </div>
+        </Link>
         <nav className="site-nav" aria-label="Điều hướng chính">
           <ul>
-            <li><a href="#home">Trang chủ</a></li>
-            <li><a href="#timeline">Timeline</a></li>
-            <li><a href="#search">Tìm kiếm</a></li>
-            <li><a href="#about">Khái quát</a></li>
+            <li>
+              {isHome ? (
+                <a href="#home" onClick={(e) => { e.preventDefault(); scrollTo('#home'); }}>Trang chủ</a>
+              ) : (
+                <Link to="/#home">Trang chủ</Link>
+              )}
+            </li>
+            <li>
+              {isHome ? (
+                <a href="#timeline" onClick={(e) => { e.preventDefault(); scrollTo('#timeline'); }}>Timeline</a>
+              ) : (
+                <Link to="/#timeline">Timeline</Link>
+              )}
+            </li>
+            <li>
+              {isHome ? (
+                <a href="#search" onClick={(e) => { e.preventDefault(); scrollTo('#search'); }}>Tìm kiếm</a>
+              ) : (
+                <Link to="/#search">Tìm kiếm</Link>
+              )}
+            </li>
+            <li><Link to="/ai-history" className={location.pathname === '/ai-history' ? 'active-link' : ''}>Lịch sử với AI</Link></li>
+            <li>
+              {isHome ? (
+                <a href="#about" onClick={(e) => { e.preventDefault(); scrollTo('#about'); }}>Khái quát</a>
+              ) : (
+                <Link to="/#about">Khái quát</Link>
+              )}
+            </li>
           </ul>
         </nav>
       </div>
@@ -30,8 +66,8 @@ function Hero({ stats }) {
           <h1 id="hero-title">Khám phá lịch sử Việt Nam</h1>
           <p className="lead">Giao diện hiện đại, tông màu sáng, nội dung súc tích. Tương tác với timeline các sự kiện lớn và tìm kiếm nhanh chóng.</p>
           <div className="hero-actions">
-            <a className="btn btn-primary" href="#timeline">Khám phá Timeline</a>
-            <a className="btn btn-ghost" href="#search">Tìm sự kiện</a>
+            <a className="btn btn-primary" href="#timeline" onClick={(e) => { e.preventDefault(); document.querySelector('#timeline').scrollIntoView({ behavior: 'smooth' }); }}>Khám phá Timeline</a>
+            <Link className="btn btn-ghost" to="/ai-history">Thử tính năng AI</Link>
           </div>
         </div>
         <div className="hero-visual" aria-hidden="true">
@@ -336,7 +372,7 @@ function Search({ events }) {
               <h3 className="result-title">{e.title}</h3>
               <div className="result-meta">{e.year} • {e.dynasty || '—'} • {e.period}</div>
               <p>{e.description}</p>
-              <a className="back-to-top" href="#timeline" aria-label="Đi tới timeline">Xem trên timeline →</a>
+              <a className="back-to-top" href="#timeline" onClick={(e) => { e.preventDefault(); document.querySelector('#timeline').scrollIntoView({ behavior: 'smooth' }); }} aria-label="Đi tới timeline">Xem trên timeline →</a>
             </article>
           ))}
           {query && results.length === 0 && <div>Không tìm thấy kết quả phù hợp.</div>}
@@ -352,9 +388,20 @@ function Footer() {
     <footer className="site-footer" role="contentinfo">
       <div className="container footer-inner">
         <p>© {year} Lịch sử Việt Nam. Thiết kế hiện đại, tối ưu trải nghiệm.</p>
-        <a href="#home" className="back-to-top" aria-label="Lên đầu trang">Lên đầu trang ↑</a>
+        <a href="#home" className="back-to-top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-label="Lên đầu trang">Lên đầu trang ↑</a>
       </div>
     </footer>
+  )
+}
+
+function HomePage({ stats, allEvents }) {
+  return (
+    <>
+      <Hero stats={stats} />
+      <About />
+      <Timeline events={allEvents} />
+      <Search events={allEvents} />
+    </>
   )
 }
 
@@ -366,6 +413,22 @@ export default function App() {
     const numDynasties = new Set(allEvents.map(e => e.dynasty).filter(Boolean)).size
     return { numEvents, numCenturies, numDynasties }
   }, [])
+
+  const location = useLocation()
+
+  useEffect(() => {
+    // Handle hash scrolling when loading the page or navigating with hash
+    if (location.hash) {
+      const id = location.hash
+      setTimeout(() => {
+        const element = document.querySelector(id)
+        if (element) element.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    } else if (location.pathname !== '/') {
+      // Scroll to top on new page
+      window.scrollTo(0, 0)
+    }
+  }, [location])
 
   useEffect(() => {
     const skip = document.createElement('a')
@@ -379,10 +442,10 @@ export default function App() {
     <>
       <Header />
       <main id="main">
-        <Hero stats={stats} />
-        <About />
-        <Timeline events={allEvents} />
-        <Search events={allEvents} />
+        <Routes>
+          <Route path="/" element={<HomePage stats={stats} allEvents={allEvents} />} />
+          <Route path="/ai-history" element={<AiHistory />} />
+        </Routes>
       </main>
       <Footer />
     </>
