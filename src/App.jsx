@@ -201,13 +201,6 @@ function EventDetailModal({ event, isOpen, onClose, getPeriodColor }) {
             </div>
           )}
 
-          {!event.details && (
-            <div className="event-modal-placeholder">
-              <p>Nội dung chi tiết sẽ được thêm vào đây.</p>
-              <p className="details-hint">Bạn có thể chỉnh sửa trong file <code>src/data/events.js</code> để thêm nội dung chi tiết cho sự kiện này.</p>
-            </div>
-          )}
-
           <div className="event-modal-section">
             <h3 className="section-title">Thông tin từ Wikipedia</h3>
             <WikipediaSummary title={event.title} language="vi" />

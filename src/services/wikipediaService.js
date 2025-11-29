@@ -3,7 +3,7 @@
  * Communicates with backend API to fetch Wikipedia data
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export async function getWikipediaPageSummary(title, language = 'vi') {
   if (!title || !title.trim()) {
@@ -104,7 +104,7 @@ export async function searchWikipedia(query, limit = 10, language = 'vi') {
 
 export async function getCacheStats() {
   try {
-    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/api/cache/stats`);
+    const response = await fetch('/api/cache/stats');
     if (!response.ok) throw new Error('Failed to fetch cache stats');
     return await response.json();
   } catch (error) {
@@ -115,7 +115,7 @@ export async function getCacheStats() {
 
 export async function clearCache() {
   try {
-    const response = await fetch(`${API_BASE_URL.replace('/api', '')}/api/cache/clear`, {
+    const response = await fetch('/api/cache/clear', {
       method: 'POST'
     });
     if (!response.ok) throw new Error('Failed to clear cache');
