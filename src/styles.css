@@ -46,11 +46,11 @@
 .control{display:grid;gap:6px;font-size:14px;color:var(--text-muted)}
 .control select,.control input[type=range]{padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:var(--text)}
 .timeline-container{display:grid;gap:32px;max-width:1200px;margin:0 auto}
-.timeline-wrap{position:relative;border:1px solid var(--border);background:linear-gradient(180deg,#fff,var(--surface));border-radius:20px;box-shadow:var(--shadow);padding:40px 60px;overflow:hidden;max-height:730px;margin:0 auto}
+.timeline-wrap{display:flex;flex-direction:column;position:relative;border:1px solid var(--border);background:linear-gradient(180deg,#fff,var(--surface));border-radius:20px;box-shadow:var(--shadow);padding:40px 60px;overflow:hidden;max-height:730px;margin:0 auto}
 .timeline-line{position:absolute;top:0;bottom:0;left:100px;width:3px;background:linear-gradient(180deg,transparent 0%,var(--border) 5%,var(--border) 95%,transparent 100%);z-index:0}
-.timeline-rail{display:flex;flex-direction:column;gap:32px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding:20px 40px 20px 0;position:relative;z-index:1;scrollbar-color:var(--primary) var(--surface-2)}
-.timeline-rail::-webkit-scrollbar{width:12px}
-.timeline-rail::-webkit-scrollbar-track{background:var(--surface-2);border-radius:999px;margin:8px 0}
+.timeline-rail{flex:1;min-height:0;display:flex;flex-direction:column;gap:32px;overflow-y:auto;overflow-x:hidden;scrollbar-width:auto;padding:20px 20px 20px 0;position:relative;z-index:1;scrollbar-color:var(--primary) var(--surface-2)}
+.timeline-rail::-webkit-scrollbar{width:10px}
+.timeline-rail::-webkit-scrollbar-track{background:var(--surface-2);border-radius:999px}
 .timeline-rail::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--primary),var(--accent));border-radius:999px;border:2px solid var(--surface-2);min-height:40px}
 .timeline-rail::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,var(--primary-600),var(--accent))}
 .timeline-rail::-webkit-scrollbar-thumb:active{background:linear-gradient(180deg,var(--primary-600),#f59e0b)}
