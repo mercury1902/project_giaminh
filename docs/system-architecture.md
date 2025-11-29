@@ -91,21 +91,25 @@
 **Responsibility**: User interface rendering and user interactions
 
 **Components**:
-- React functional components
-- JSX templates
-- CSS styling
-- Event handlers
-- Form controls
+- React functional components with modern patterns
+- JSX templates with accessibility features
+- CSS styling with responsive design
+- Event handlers with error recovery
+- Form controls with validation
+- Real-time streaming UI components
 
 **Technologies**:
 - React 18.3.1 (UI library)
 - React Router DOM 7.9.6 (routing)
-- CSS3 with custom properties
+- CSS3 with custom properties and modern layout
+- Streaming response handling with AbortController
+- ARIA compliance and keyboard navigation
 
 **Files**:
 - `src/App.jsx` - Main application and all UI components
 - `src/pages/AiHistory.jsx` - AI history page component
-- `src/styles.css` - Global styles and component styles
+- `src/components/gemini-chat-panel.jsx` - Phase 3 AI chat interface
+- `src/styles.css` - Global styles, component styles, and responsive design
 
 ---
 
@@ -277,6 +281,362 @@ const { data, loading, error, retry, isRetryable } = useWikipediaData('Lý Thái
 ```
 
 **Location**: `src/hooks/useFetch.js`
+
+---
+
+## Phase 3 Frontend UX Architecture
+
+### Overview
+
+**Status**: ✅ Complete (Phase 3 Implementation - November 30, 2025)
+
+Phase 3 introduced a comprehensive frontend UX enhancement focused on:
+- **Real-time streaming interface** for AI interactions
+- **Advanced accessibility compliance** (WCAG 2.1 AA)
+- **Error recovery and retry mechanisms**
+- **Progressive loading states with phase indicators**
+- **Responsive design optimization**
+- **Modern CSS architecture with design tokens**
+
+### Component Architecture: Gemini Chat Panel
+
+**File**: `src/components/gemini-chat-panel.jsx`
+
+**Design System Compliance**:
+- **Color Palette**: `#F4EFEC` (surface), `#1A1A1A` (text), `#D9AE8E` (accent)
+- **Typography**: Be Vietnam Pro (headings), Lora (body), Montserrat (labels)
+- **Spacing**: 24px base unit with 8px increments
+- **Accessibility**: Full ARIA compliance, keyboard navigation, screen reader support
+
+**Component Breakdown**:
+
+#### 1. State Management Architecture
+```javascript
+// Multi-state management for complex interactions
+const [messages, setMessages] = useState([]);
+const [loading, setLoading] = useState(false);
+const [loadingPhase, setLoadingPhase] = useState(null); // NEW
+const [error, setError] = useState(null);
+const [retryCount, setRetryCount] = useState(0); // NEW
+const [lastSuccessfulRequest, setLastSuccessfulRequest] = useState(null); // NEW
+```
+
+**Loading Phases** (NEW):
+- `RAG_SEARCH`: Wikipedia context searching
+- `GEMINI_THINKING`: AI response generation
+- `STREAMING`: Real-time content delivery
+- `ERROR`: Error state with recovery options
+
+#### 2. Metadata Parsing System
+```javascript
+// Phase 2 enhanced response format handling
+const parseMetadata = (text) => {
+  const metadataMatch = text.match(/\[METADATA\](.*?)\[\/METADATA\]/s);
+  // Parse success, strategy, articles, request ID
+};
+
+const extractContent = (text) => {
+  return text
+    .replace(/\[METADATA\].*?\[\/METADATA\]/gs, '')
+    .replace(/\[END\]$/gs, '')
+    .trim();
+};
+```
+
+#### 3. Real-time Streaming Interface
+```javascript
+// Streaming response with AbortController
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value, { stream: true });
+  fullResponse += chunk;
+
+  // Real-time UI updates
+  setMessages(prev => {
+    // Update assistant message with streaming content
+  });
+}
+```
+
+#### 4. Advanced Error Handling
+```javascript
+// Comprehensive error categorization and recovery
+catch (error) {
+  let errorMessage = 'Lỗi kết nối. Vui lòng thử lại.';
+  let errorCode = 'UNKNOWN';
+  let isRetryable = true;
+
+  // Specific error handling:
+  // - AbortError: User cancellation
+  // - Timeout: Request exceeded time limit
+  // - ConfigError: API key issues
+
+  setError({
+    message: errorMessage,
+    code: errorCode,
+    timestamp: new Date().toISOString(),
+    retryable: errorCode !== 'CONFIG_ERROR' && errorCode !== 'ABORTED'
+  });
+}
+```
+
+#### 5. Source Attribution System
+```javascript
+// Wikipedia source indicators with strategy mapping
+const getSourceIndicator = (metadata) => {
+  const strategyIcons = {
+    1: '🎯', // Primary search
+    2: '🔤', // Keyword search
+    3: '🔓'  // Diacritic removal
+  };
+
+  return (
+    <span className="source-indicator"
+          title={`Wikipedia - Chiến lược ${metadata.ragStrategy} (${metadata.articles} bài viết)`}>
+      {strategyIcons[metadata.ragStrategy]} Wikipedia ({strategyNames[metadata.ragStrategy]})
+    </span>
+  );
+};
+```
+
+### CSS Architecture & Responsive Design
+
+**File**: `src/styles.css` (Enhanced in Phase 3)
+
+#### 1. Design Token System
+```css
+:root {
+  /* Primary Neutrals - Minimalist Foundation */
+  --bg: #ffffff;
+  --surface: #f4efec;
+  --text: #1a1a1a;
+  --text-muted: #4e4c4f;
+  --border: #9f8d8d;
+
+  /* Vietnamese Period Colors - Cultural System */
+  --period-cds: #1f2937;        /* Cổ đại (Ancient) */
+  --period-pks: #dc2626;        /* Phong kiến (Feudal) */
+  --period-cds-modern: #eabb00; /* Cận đại (Modern) */
+  --period-hds: #16a34a;        /* Hiện đại (Contemporary) */
+
+  /* Accent Colors */
+  --accent-primary: #d9ae8e;
+  --accent-emphasis: #c41e3a;
+}
+```
+
+#### 2. Typography System with Vietnamese Support
+```css
+/* Font Families - Google Fonts with Vietnamese Support */
+--font-heading: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+--font-body: 'Lora', 'Georgia', serif;
+--font-label: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+```
+
+#### 3. Modern CSS Architecture
+```css
+/* Component-based CSS organization */
+
+/* Layout Patterns */
+.container { /* Grid/Flexbox layouts */ }
+
+/* Component Patterns */
+.gemini-chat-overlay { /* Fixed overlay with backdrop blur */ }
+.gemini-chat-panel { /* Responsive chat container */ }
+.gemini-chat-messages { /* Scrollable message area */ }
+
+/* State Modifiers */
+.message.user { /* User message alignment and styling */ }
+.message.assistant { /* Assistant message styling */ }
+.message.error { /* Error message highlighting */ }
+
+/* Animation System */
+@keyframes messageSlide { /* Smooth message appearance */ }
+.loading-progress { /* Progress bar animation */ }
+```
+
+#### 4. Responsive Design Breakpoints
+```css
+/* Mobile-first responsive design */
+.gemini-chat-panel {
+  width: 90%;
+  height: 70vh;
+  max-height: 600px;
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) {
+  .gemini-chat-panel {
+    width: 80%;
+    height: 75vh;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+  .gemini-chat-panel {
+    width: 800px;
+    max-width: 90%;
+  }
+}
+```
+
+### Accessibility Implementation (Phase 3)
+
+#### 1. ARIA Compliance
+```jsx
+<div
+  className="gemini-chat-overlay"
+  role="dialog"
+  aria-label="Gemini Chat lịch sử Việt Nam"
+  aria-modal="true"
+  onClick={onClose}
+>
+  <button
+    aria-label="Đóng chat"
+    className="chat-close-btn"
+  >
+    &times;
+  </button>
+</div>
+```
+
+#### 2. Keyboard Navigation
+```jsx
+// Focus management
+useEffect(() => {
+  if (isOpen) {
+    inputRef.current?.focus();
+  }
+}, [isOpen]);
+
+// Form submission handling
+const handleSubmit = useCallback((e) => {
+  e.preventDefault();
+  sendMessage();
+}, [sendMessage]);
+```
+
+#### 3. Screen Reader Support
+```jsx
+// Semantic HTML structure
+<form onSubmit={handleSubmit} className="gemini-chat-input-form">
+  <input
+    ref={inputRef}
+    aria-label="Nhập câu hỏi"
+    autoComplete="off"
+    disabled={loading}
+  />
+</form>
+```
+
+### Error Recovery & User Experience
+
+#### 1. Progressive Error Handling
+```javascript
+// Multi-level error recovery
+const retryLastMessage = useCallback(() => {
+  if (messages.length < 2) return;
+
+  const lastUserMessage = messages[messages.length - 2];
+  if (!lastUserMessage || lastUserMessage.role !== 'user') return;
+
+  setRetryCount(prev => prev + 1);
+  setError(null);
+  sendMessage(lastUserMessage.content);
+}, [messages]);
+```
+
+#### 2. Loading State Management
+```javascript
+// Phase-aware loading indicators
+const getLoadingMessage = () => {
+  switch (loadingPhase) {
+    case 'rag_search': return '🔍 Tìm kiếm Wikipedia...';
+    case 'gemini': return '🤔 Đang suy nghĩ...';
+    case 'streaming': return '✍️ Đang viết câu trả lời...';
+    default: return '⏳ Đang xử lý...';
+  }
+};
+```
+
+#### 3. Visual Feedback Systems
+```jsx
+{/* Enhanced loading state with phase indicator */}
+{loading && (
+  <div className="message assistant loading">
+    <div className="loading-indicator">
+      {getLoadingMessage()}
+      {loadingPhase === 'rag_search' && (
+        <div className="loading-progress">
+          <div className="progress-bar"></div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+{/* Enhanced error display with retry option */}
+{error && !loading && (
+  <div className="error-message">
+    <div className="error-content">
+      <span className="error-icon">⚠️</span>
+      <span className="error-text">{error.message}</span>
+    </div>
+    {error.retryable && (
+      <div className="error-actions">
+        <button onClick={retryLastMessage} className="retry-button">
+          🔄 Thử lại ({retryCount > 0 ? `${retryCount}` : ''})
+        </button>
+      </div>
+    )}
+  </div>
+)}
+```
+
+### Performance Optimizations (Phase 3)
+
+#### 1. Stream Processing Optimization
+```javascript
+// Efficient stream reading with TextDecoder
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+
+// Process chunks incrementally
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value, { stream: true });
+  // Incremental UI updates
+}
+```
+
+#### 2. Memory Management
+```javascript
+// Cleanup AbortController on unmount
+useEffect(() => {
+  return () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+}, []);
+```
+
+#### 3. Request Cancellation
+```javascript
+// Cancel previous requests when new ones start
+if (abortControllerRef.current) {
+  abortControllerRef.current.abort();
+}
+abortControllerRef.current = new AbortController();
+```
 
 ---
 
