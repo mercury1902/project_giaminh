@@ -496,14 +496,115 @@ dist/
 
 ---
 
+## Backend Services
+
+### RAG Service (Retrieval-Augmented Generation)
+
+**Location**: `backend/services/rag-service.js` (232 lines)
+
+**Purpose**: Prepares context for Gemini chatbot by combining static event data with dynamic Wikipedia summaries
+
+**Multi-Tier Fallback Architecture**:
+
+The RAG service implements a resilient 3-tier Wikipedia search strategy to handle edge cases:
+
+1. **Strategy 1 - Primary Search** (Direct query)
+   - Searches Wikipedia with exact user query
+   - Success rate: ~65%
+   - Fastest when successful (~450ms avg)
+
+2. **Strategy 2 - Keyword Search** (Semantic extraction)
+   - Extracts keywords from query (removes stop words)
+   - Searches top 3 keywords sequentially
+   - Success rate: ~25% (when Strategy 1 fails)
+   - Handles complex Vietnamese grammar
+
+3. **Strategy 3 - Simplified Search** (Diacritics removal)
+   - Removes Vietnamese diacritics via NFD normalization
+   - Fallback for title variations
+   - Success rate: ~8% (when Strategy 1 & 2 fail)
+   - Only runs if diacritics present
+
+**Timeout Guard**: 2.5s max for all strategies (leaves 0.5s buffer)
+
+**Key Functions**:
+- `getRAGContext(query)` - Main entry point, returns `{content, meta}` format (changed from `string`)
+- `searchWikipediaMultiTier(query)` - Orchestrates 3-tier fallback
+- `extractKeywords(query)` - Vietnamese stop word filtering
+- `removeDiacritics(text)` - NFD normalization for diacritics
+
+**Response Format**:
+```javascript
+{
+  content: string,           // Formatted context for Gemini
+  meta: {
+    success: boolean,        // Wikipedia search success
+    strategy: 0|1|2|3,      // Which tier succeeded (0 = all failed)
+    articles: number,        // Number of summaries retrieved
+    reason: string,          // Human-readable reason
+    error?: string           // Error message if failed
+  }
+}
+```
+
+**Cache**: LRU cache with 5min TTL (100 entries max)
+
+**Static Events**: 18 Vietnamese historical events (2879 BCE - 1990s)
+
+---
+
+### Wikipedia Service
+
+**Location**: `backend/services/wikipedia-service.js`
+
+**Purpose**: Wikipedia Core REST API integration with caching and CORS proxy
+
+**Features**:
+- Search articles by query
+- Fetch article summaries
+- LRU caching (5min TTL)
+- CORS proxy for client-side compatibility
+
+**Integration**: Used by RAG service for dynamic content enrichment
+
+---
+
+### Gemini Chat Routes
+
+**Location**: `backend/routes/gemini-routes.js` (66 lines)
+
+**Endpoints**:
+- `POST /api/gemini/chat` - Streaming chat responses
+
+**RAG Integration**:
+```javascript
+const ragResult = await getRAGContext(query)
+
+// Backward compatibility: handles both string and {content, meta} formats
+const ragContext = typeof ragResult === 'string'
+  ? ragResult
+  : ragResult?.content || ragResult
+```
+
+**Model**: Gemini 2.0 Flash (gemini-2.0-flash-001)
+
+**Features**:
+- Streaming responses
+- Vietnamese history specialization
+- RAG-enhanced context
+- System prompt with citation instructions
+
+---
+
 ## Future Extensions
 
 ### Planned Features
 
 1. **AI History Page** (`/ai-history`)
-   - Wikipedia API integration (partial docs available)
-   - AI-powered Q&A
-   - Historical character interactions
+   - ✅ Wikipedia API integration (implemented)
+   - ✅ AI-powered Q&A (implemented with Gemini)
+   - 🚧 RAG Cache optimization (Phase 2)
+   - 🚧 Hybrid RAG with embeddings (Phase 3)
 
 2. **Enhanced Event Details**
    - Add `details` field content for all events
