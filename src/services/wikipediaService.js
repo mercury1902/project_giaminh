@@ -10,6 +10,32 @@ export async function getWikipediaPageSummary(title, language = 'vi') {
     return { error: true, errorCode: 'INVALID_TITLE' };
   }
 
+  // Try fetching with exact title first
+  let response = await _fetchWikipediaArticle(title, language);
+
+  // If not found (404), try alternative keywords
+  if (!response.success && response.statusCode === 404) {
+    // Extract keywords from title (split by –, /, •, etc.)
+    const keywords = title
+      .split(/[–/•\-\|]/g)
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+
+    // Try each keyword
+    for (const keyword of keywords) {
+      if (keyword !== title) { // Don't retry exact title
+        response = await _fetchWikipediaArticle(keyword, language);
+        if (response.success) break;
+      }
+    }
+  }
+
+  // Remove internal success flag before returning
+  const { success, ...result } = response;
+  return result;
+}
+
+async function _fetchWikipediaArticle(title, language = 'vi') {
   try {
     const response = await fetch(
       `${API_BASE_URL}/wikipedia/${encodeURIComponent(title)}?language=${language}`,
@@ -22,11 +48,10 @@ export async function getWikipediaPageSummary(title, language = 'vi') {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorCode = errorData.error || 'UNKNOWN';
-
       return {
+        success: false,
         error: true,
-        errorCode,
+        errorCode: errorData.error || 'UNKNOWN',
         message: errorData.message || 'Lỗi khi tải dữ liệu từ Wikipedia',
         statusCode: response.status,
         fromCache: false
@@ -34,13 +59,19 @@ export async function getWikipediaPageSummary(title, language = 'vi') {
     }
 
     const data = await response.json();
-    return { error: false, ...data };
+    return { success: true, error: false, ...data };
   } catch (error) {
     if (error.name === 'AbortError') {
-      return { error: true, errorCode: 'TIMEOUT', fromCache: false };
+      return {
+        success: false,
+        error: true,
+        errorCode: 'TIMEOUT',
+        fromCache: false
+      };
     }
 
     return {
+      success: false,
       error: true,
       errorCode: 'NETWORK_ERROR',
       message: 'Không thể kết nối đến máy chủ',
