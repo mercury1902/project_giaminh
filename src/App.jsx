@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { events as allEvents, dynasties, periods } from './data/events.js'
+import { useWikipediaData } from './hooks/useFetch'
 
 function Header() {
   return (
@@ -75,6 +76,11 @@ function About() {
 }
 
 function EventDetailModal({ event, isOpen, onClose, getPeriodColor }) {
+  // Wikipedia data fetching
+  const { data: wikiData, loading: wikiLoading, error: wikiError, retry: retryWiki } = useWikipediaData(
+    isOpen && event ? event.title : null
+  )
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
@@ -170,6 +176,59 @@ function EventDetailModal({ event, isOpen, onClose, getPeriodColor }) {
               <p className="details-hint">Bạn có thể chỉnh sửa trong file <code>src/data/events.js</code> để thêm nội dung chi tiết cho sự kiện này.</p>
             </div>
           )}
+
+          {/* Wikipedia Section */}
+          <div className="event-modal-section wiki-section">
+            <div className="wiki-section-header">
+              <h3 className="section-title">
+                <span className="wiki-icon">🔗</span> Wikipedia
+              </h3>
+            </div>
+
+            {wikiLoading && (
+              <div className="wiki-loading">
+                <div className="loading-spinner"></div>
+                <p>Đang tải từ Wikipedia...</p>
+              </div>
+            )}
+
+            {wikiError && !wikiLoading && (
+              <div className="wiki-error">
+                <p className="error-message">{wikiError.message}</p>
+                {wikiError.retryable && (
+                  <button className="btn btn-retry" onClick={retryWiki}>
+                    Thử lại
+                  </button>
+                )}
+                {wikiError.url && (
+                  <a href={wikiError.url} target="_blank" rel="noopener noreferrer" className="btn btn-wiki">
+                    Tìm kiếm trên Wikipedia →
+                  </a>
+                )}
+              </div>
+            )}
+
+            {wikiData && !wikiLoading && !wikiError && (
+              <div className="wiki-content">
+                <p className="section-content">{wikiData.extract}</p>
+                <a
+                  href={wikiData.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-wiki"
+                  aria-label={`Đọc bài viết đầy đủ về ${event.title} trên Wikipedia`}
+                >
+                  Đọc trên Wikipedia →
+                </a>
+              </div>
+            )}
+
+            {!wikiData && !wikiLoading && !wikiError && (
+              <div className="wiki-placeholder">
+                <p className="section-content">Không có dữ liệu Wikipedia</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -336,7 +395,18 @@ function Search({ events }) {
               <h3 className="result-title">{e.title}</h3>
               <div className="result-meta">{e.year} • {e.dynasty || '—'} • {e.period}</div>
               <p>{e.description}</p>
-              <a className="back-to-top" href="#timeline" aria-label="Đi tới timeline">Xem trên timeline →</a>
+              <div className="result-links">
+                <a className="back-to-top" href="#timeline" aria-label="Đi tới timeline">Xem trên timeline →</a>
+                <a
+                  href={`https://vi.wikipedia.org/wiki/${encodeURIComponent(e.title)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="wiki-link"
+                  aria-label={`Tìm hiểu thêm về ${e.title} trên Wikipedia`}
+                >
+                  🔗 Wikipedia
+                </a>
+              </div>
             </article>
           ))}
           {query && results.length === 0 && <div>Không tìm thấy kết quả phù hợp.</div>}
