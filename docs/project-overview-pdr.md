@@ -164,11 +164,27 @@ To become the **go-to interactive platform** for learning Vietnamese history, co
 
 **User Value**: Usable by all users including those with disabilities
 
-#### 8. AI History Page (Placeholder) 🚧
-**Description**: Future AI-powered historical Q&A feature
+#### 8. AI History Q&A ✅
+**Description**: AI-powered historical Q&A with Wikipedia integration
 
-**Status**: Coming soon
-**Planned Features**: Wikipedia AI integration, character Q&A
+**Features**:
+- Real-time AI chat about Vietnamese history using Google Gemini 2.0 Flash
+- Multi-tier Wikipedia search with fallback strategies (3 search methods)
+- RAG (Retrieval-Augmented Generation) with Vietnamese history context
+- Streaming responses with metadata headers and error handling
+- Structured logging with request ID tracking
+- Performance optimization with 2.5s timeout guards
+- LRU caching for Wikipedia API responses (5min TTL)
+
+**User Value**: Get detailed, accurate answers about Vietnamese history from AI
+
+**Technical Implementation**:
+- Backend: Node.js + Express streaming API
+- Response Format: `[METADATA]{...}[/METADATA]` + content + `[END]`
+- Error Handling: Structured errors with user-friendly Vietnamese messages
+- Frontend: Real-time chat interface with streaming text display
+- Integration: Wikipedia Core REST API with CORS proxy
+- Performance: <3s total response time including context generation
 
 ---
 
@@ -478,14 +494,29 @@ To become the **go-to interactive platform** for learning Vietnamese history, co
 - Vite 5.4.8 (build tool)
 - CSS3 with custom properties (styling)
 
+**Backend (AI Services)**:
+- Node.js + Express.js (server framework)
+- Google Generative AI (Gemini 2.0 Flash API)
+- Wikipedia Core REST API integration
+- LRU Cache for API response caching
+- CORS proxy for API access
+
+**AI & External APIs**:
+- Google Gemini 2.0 Flash (AI reasoning)
+- Wikipedia Core REST API (knowledge base)
+- Multi-tier search strategy with fallback
+- RAG (Retrieval-Augmented Generation)
+
 **Development**:
 - Node.js 18+ (runtime)
 - npm/pnpm (package manager)
 - Git (version control)
 
 **Deployment**:
-- Static hosting compatible
-- No backend required (static JSON data)
+- Static hosting compatible (frontend)
+- Backend server for AI services
+- Environment variables for API keys
+- CORS configuration for cross-origin requests
 
 ### System Requirements
 
@@ -541,16 +572,49 @@ To become the **go-to interactive platform** for learning Vietnamese history, co
 - ✅ Cross-browser testing
 - ✅ Documentation
 
-### Phase 4: AI Integration (🚧 In Progress)
-**Timeline**: Q1 2025
+### Phase 4: AI Integration (✅ Complete - Phase 2)
+**Timeline**: Completed 2025-11-30
 **Goals**: Add AI-powered features
 
-**Planned Deliverables**:
-- 🚧 Wikipedia API integration (partial)
-- 🔄 AI Q&A functionality
-- 🔄 Historical character chat
-- 🔄 Context-aware suggestions
-- 🔄 Natural language search
+**Completed Deliverables**:
+- ✅ Wikipedia API integration with multi-tier fallback strategy
+- ✅ AI Q&A functionality with Google Gemini 2.0 Flash
+- ✅ Streaming response handling with metadata headers
+- ✅ RAG context integration with Vietnamese history data
+- ✅ Structured error handling and request tracking
+- ✅ Performance optimization with timeout guards
+
+**Phase 2 Implementation Details**:
+- **Response Format**: `[METADATA]{...}[/METADATA]` + streaming content + `[END]` marker
+- **Error Handling**: Structured error responses with request ID tracking
+- **Logging**: Comprehensive request lifecycle logging with performance metrics
+- **RAG Service**: Multi-tier Wikipedia search (3 strategies, 2.5s timeout)
+- **Caching**: LRU cache with 5min TTL for API responses
+- **Frontend Integration**: GeminiChatPanel component with real-time streaming
+
+**Backend Services Added**:
+- `backend/routes/gemini-routes.js` - Streaming chat API with metadata
+- `backend/services/rag-service.js` - RAG context generation
+- `backend/services/wikipedia-service.js` - Wikipedia API integration
+- `backend/server.js` - CORS proxy and configuration
+
+**Frontend Components Added**:
+- `src/components/gemini-chat-panel.jsx` - Interactive AI chat interface
+- `src/pages/ai-history-search.jsx` - AI history search page
+- `src/test-setup.js` - Testing configuration for AI features
+
+**Performance Metrics**:
+- RAG context generation: ~1264ms (target: <3000ms)
+- Multi-tier Wikipedia search: 800-1200ms
+- Wikipedia summaries fetch: 300-600ms
+- Total response time with streaming: <3s
+
+**Next Phase: AI Enhancement (🔄 Planned)**
+- 🔄 Historical character chat with specific personas
+- 🔄 Context-aware question suggestions
+- 🔄 Advanced natural language search
+- 🔄 Vietnamese history expertise tuning
+- 🔄 User conversation history
 
 ### Phase 5: Content Expansion (🔄 Planned)
 **Timeline**: Q2 2025

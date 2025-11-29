@@ -28,14 +28,32 @@ function setResponseHeaders(res, requestId) {
   res.flushHeaders();
 }
 
-function buildSystemPrompt(ragContent, ragMeta) {
+function buildSystemPrompt(ragContent, ragMeta, query = '') {
+  const hasVietnameseHistoryIntent = query.toLowerCase().includes('lịch sử') &&
+    (query.toLowerCase().includes('việt nam') || query.toLowerCase().includes('việt'));
+
   const sourceInfo = ragMeta?.success
-    ? `(Sử dụng Wikipedia - chiến lược ${ragMeta.strategy}, ${ragMeta.articles} bài viết)`
-    : '(Không có dữ liệu Wikipedia)';
+    ? `📚 Dựa trên Wikipedia (${ragMeta.articles} bài viết - chiến lược ${ragMeta.strategy})`
+    : '🧠 Dựa trên kiến thức lịch sử Việt Nam';
 
-  return `Bạn là một trợ lý lịch sử hữu ích. Sử dụng context được cung cấp cho các câu trả lời chính xác. Ưu tiên các sự kiện lịch sử Việt Nam. Trích dẫn các nguồn. Hãy trả lời bằng tiếng Việt. ${sourceInfo}
+  return `Bạn là chuyên gia lịch sử Việt Nam thân thiện, luôn cố gắng giúp đỡ.
 
-Context: ${ragContent}`;
+**NGUYÊN TẮC QUAN TRỌNG**:
+- KHÔNG BAO GIỜ "Tôi không tìm thấy thông tin" về lịch sử Việt Nam
+- Nếu không có Wikipedia, sử dụng kiến thức chung về lịch sử Việt Nam
+- Với câu hỏi chung ("cho tôi biết lịch sử Việt Nam"), giới thiệu các thời kỳ chính
+- Luôn trả lời bằng tiếng Việt tự nhiên, thân thiện
+
+**Nguồn dữ liệu**: ${sourceInfo}
+
+**Dữ liệu cụ thể**:
+${ragContent}
+
+**Hướng dẫn thêm**:
+- Nếu người dùng hỏi chung, giới thiệu tổng quan các thời kỳ lịch sử Việt Nam
+- Nếu có Wikipedia, ưu tiên thông tin từ nguồn đó
+- Nếu không có Wikipedia, sử dụng kiến thức chung nhưng vẫn cung cấp thông tin hữu ích
+- Luôn giữ thái độ tích cực và giúp đỡ`;
 }
 
 function writeMetadataHeader(res, metadata) {
@@ -112,7 +130,7 @@ router.post('/chat', async (req, res) => {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
 
     // Step 5: Prepare system prompt and messages
-    const systemPrompt = buildSystemPrompt(ragContent, ragMeta);
+    const systemPrompt = buildSystemPrompt(ragContent, ragMeta, query);
     const contents = messages.map(msg => ({
       role: msg.role,
       parts: [{ text: msg.content || (msg.parts && msg.parts[0] ? msg.parts[0].text || msg.parts[0] : '') }]

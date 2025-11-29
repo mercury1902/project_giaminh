@@ -16,6 +16,7 @@
 6. [Best Practices](#best-practices)
 7. [Common Patterns](#common-patterns)
 8. [Anti-Patterns to Avoid](#anti-patterns-to-avoid)
+9. [API Response Format Standards](#api-response-format-standards)
 
 ---
 
@@ -858,6 +859,274 @@ Before committing code, verify:
 
 ---
 
+## API Response Format Standards
+
+### Phase 2 Streaming Response Pattern
+
+**Status**: ✅ Established (Phase 2 Implementation)
+
+**Standard**: Metadata + Streaming Content + End Marker
+
+#### Response Structure
+```
+[HTTP Headers]
+X-Request-ID: <uniqueRequestId>
+Content-Type: text/plain; charset=utf-8
+Cache-Control: no-cache
+Connection: keep-alive
+
+[Response Body]
+[METADATA]{JSON_METADATA}[/METADATA]
+<streaming_content_here>
+[END]
+```
+
+#### Metadata Schema
+```javascript
+// Success Response Metadata
+{
+  "success": true,           // Required: Boolean
+  "ragSuccess": true,        // Optional: Boolean - RAG context success
+  "ragStrategy": 1,          // Optional: Number - Search strategy used (1, 2, 3)
+  "articles": 3,             // Optional: Number - Wikipedia articles found
+  "timestamp": "2025-11-30T...", // Required: String - ISO timestamp
+  "requestId": "1738261234567-abc123def" // Required: String - Unique identifier
+}
+
+// Error Response Metadata
+{
+  "success": false,         // Required: Boolean
+  "error": "Error message",  // Required: String - Error description
+  "errorCode": "ERROR_CODE", // Optional: String - Machine-readable error code
+  "timestamp": "2025-11-30T...", // Required: String - ISO timestamp
+  "requestId": "1738261234567-abc123def", // Required: String - Unique identifier
+  "duration": 1250          // Optional: Number - Request duration in ms
+}
+```
+
+#### Request ID Pattern
+```javascript
+// Standard Request ID Generation
+function generateRequestId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Example Output: "1738261234567-abc123def"
+// Pattern: <timestamp>-<random_9_chars>
+```
+
+#### Backend Response Pattern
+```javascript
+// Phase 2 Response Implementation
+router.post('/endpoint', async (req, res) => {
+  const requestId = generateRequestId();
+  const startTime = Date.now();
+
+  try {
+    // 1. Process request logic
+    const result = await processRequest(req.body);
+
+    // 2. Set response headers
+    res.setHeader('X-Request-ID', requestId);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.flushHeaders();
+
+    // 3. Write success metadata
+    const metadata = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      requestId,
+      // ... other fields
+    };
+    res.write('[METADATA]' + JSON.stringify(metadata) + '[/METADATA]\n');
+
+    // 4. Stream content (if applicable)
+    if (result.isStream) {
+      for await (const chunk of result.stream) {
+        res.write(chunk.text());
+      }
+    } else {
+      res.write(result.content);
+    }
+
+    // 5. Write end marker
+    res.write('\n[END]');
+    res.end();
+
+  } catch (error) {
+    handleStreamError(res, error, requestId, startTime);
+  }
+});
+```
+
+#### Error Handling Pattern
+```javascript
+// Standard Error Handler
+function handleStreamError(res, error, requestId, startTime) {
+  const errorMetadata = {
+    success: false,
+    error: error.message || 'Internal server error',
+    errorCode: error.code || 'UNKNOWN',
+    timestamp: new Date().toISOString(),
+    requestId,
+    duration: Date.now() - startTime
+  };
+
+  // Only set headers if not already sent
+  if (!res.headersSent) {
+    res.setHeader('X-Request-ID', requestId);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.write('[METADATA]' + JSON.stringify(errorMetadata) + '[/METADATA]\n');
+  }
+
+  const userMessage = process.env.NODE_ENV === 'development'
+    ? error.message
+    : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+
+  res.write(`Lỗi: ${userMessage}`);
+  res.write('\n[END]');
+  res.end();
+}
+```
+
+### Frontend Response Parsing
+
+#### Standard Parsing Function
+```javascript
+// Phase 2 Response Parser
+async function parseStreamingResponse(response) {
+  try {
+    // 1. Extract request ID from headers
+    const requestId = response.headers.get('X-Request-ID');
+
+    // 2. Get response text
+    const text = await response.text();
+
+    // 3. Extract metadata
+    const metadataMatch = text.match(/\[METADATA\]([\s\S]*?)\[\/METADATA\]/);
+    if (!metadataMatch) {
+      throw new Error('Invalid response format: missing metadata');
+    }
+
+    const metadata = JSON.parse(metadataMatch[1]);
+
+    // 4. Check for backend errors
+    if (!metadata.success) {
+      throw new Error(metadata.error || 'Backend error occurred');
+    }
+
+    // 5. Extract content
+    const content = text
+      .replace(/\[METADATA\][\s\S]*?\[\/METADATA\]/, '')
+      .replace(/\[END\]/, '')
+      .trim();
+
+    return {
+      success: true,
+      content,
+      metadata,
+      requestId
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      requestId: response.headers.get('X-Request-ID')
+    };
+  }
+}
+```
+
+#### Usage Pattern
+```javascript
+// Frontend Usage Example
+const handleChatRequest = async (messages) => {
+  try {
+    const response = await fetch('/api/gemini/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await parseStreamingResponse(response);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    // Success: display content and handle metadata
+    displayAIResponse(result.content);
+    logRequestMetrics(result.metadata);
+
+  } catch (error) {
+    // Error: display user-friendly message
+    displayError(error.message);
+    logError(error);
+  }
+};
+```
+
+### Logging Standards
+
+#### Structured Logging Pattern
+```javascript
+// Standard Logging Function
+function logRequest(requestId, event, data = {}) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${requestId}] [${timestamp}] ${event}: ${JSON.stringify(data)}`;
+
+  console.log(logEntry);
+
+  // Optional: Send to logging service
+  if (process.env.LOG_ENDPOINT) {
+    sendToLogService({
+      requestId,
+      timestamp,
+      event,
+      data,
+      level: event.includes('error') ? 'error' : 'info'
+    });
+  }
+}
+
+// Standard Event Types
+const LOG_EVENTS = {
+  REQUEST_START: 'chat_start',
+  RAG_COMPLETE: 'rag_complete',
+  STREAM_CREATED: 'stream_created',
+  STREAM_ERROR: 'stream_error',
+  REQUEST_ERROR: 'chat_error',
+  REQUEST_COMPLETE: 'chat_complete'
+};
+```
+
+#### Event Logging Examples
+```javascript
+// Request Lifecycle Logging
+logRequest(requestId, LOG_EVENTS.REQUEST_START, {
+  query: userQuery,
+  messageCount: messages.length,
+  userAgent: req.headers['user-agent']
+});
+
+logRequest(requestId, LOG_EVENTS.RAG_COMPLETE, ragMeta);
+
+logRequest(requestId, LOG_EVENTS.REQUEST_COMPLETE, {
+  duration: Date.now() - startTime,
+  tokens: totalTokens,
+  ragSuccess: metadata.ragSuccess,
+  contentLength: content.length
+});
+```
+
+---
+
 ## Conclusion
 
 Following these code standards ensures:
@@ -867,6 +1136,9 @@ Following these code standards ensures:
 - **Quality** in production code
 - **Performance** optimization
 - **Accessibility** compliance
+- **Standardized API responses** with proper error handling
+- **Structured logging** with request tracking
+- **Consistent error handling** patterns
 
 **Next Steps**:
 1. Refactor `App.jsx` to follow size guidelines
@@ -874,3 +1146,5 @@ Following these code standards ensures:
 3. Implement automated linting (ESLint)
 4. Add code formatting (Prettier)
 5. Set up pre-commit hooks
+6. Apply Phase 2 response standards to all new API endpoints
+7. Add response format validation in automated tests

@@ -15,8 +15,9 @@
 5. [State Management](#state-management)
 6. [Routing Architecture](#routing-architecture)
 7. [Build & Deployment](#build--deployment)
-8. [Integration Points](#integration-points)
-9. [Future Architecture](#future-architecture)
+8. [Phase 2 Response Format & Error Handling](#phase-2-response-format--error-handling)
+9. [Integration Points](#integration-points)
+10. [Future Architecture](#future-architecture)
 
 ---
 
@@ -962,6 +963,202 @@ if (getTimeRemaining() > 0) {
 
 ---
 
+## Phase 2 Response Format & Error Handling
+
+### Metadata Response Format
+
+**Status**: ✅ Implemented (Phase 2)
+
+**Response Structure**:
+```
+[HTTP Headers]
+X-Request-ID: <requestId>
+Content-Type: text/plain; charset=utf-8
+Cache-Control: no-cache
+Connection: keep-alive
+
+[Response Body]
+[METADATA]{
+  "success": true,
+  "ragSuccess": true,
+  "ragStrategy": 1,
+  "articles": 3,
+  "timestamp": "2025-11-30T...",
+  "requestId": "1738261234567-abc123def"
+}[/METADATA]
+
+<AI response content stream...>
+
+[END]
+```
+
+**Error Response Format**:
+```
+[HTTP Headers]
+X-Request-ID: <requestId>
+Content-Type: text/plain; charset=utf-8
+
+[Response Body]
+[METADATA]{
+  "success": false,
+  "error": "Error message",
+  "errorCode": "ERROR_CODE",
+  "timestamp": "2025-11-30T...",
+  "requestId": "1738261234567-abc123def",
+  "duration": 1250
+}[/METADATA]
+
+Lỗi: <Vietnamese error message>
+
+[END]
+```
+
+**Frontend Parsing Pattern**:
+```javascript
+// Phase 2 Response Parsing
+const response = await fetch('/api/gemini/chat', {...});
+const text = await response.text();
+
+// Extract metadata
+const metadataMatch = text.match(/\[METADATA\]([\s\S]*?)\[\/METADATA\]/);
+const metadata = metadataMatch ? JSON.parse(metadataMatch[1]) : null;
+
+// Extract content
+const content = text.replace(/\[METADATA\][\s\S]*?\[\/METADATA\]/, '').replace(/\[END\]/, '').trim();
+
+// Extract request ID from headers
+const requestId = response.headers.get('X-Request-ID');
+```
+
+### Structured Logging with Request IDs
+
+**Status**: ✅ Implemented (Phase 2)
+
+**Logging Pattern**:
+```javascript
+// Request ID Generation
+function generateRequestId() {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Structured Logging
+function logRequest(requestId, event, data) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${requestId}] [${timestamp}] ${event}:`, JSON.stringify(data));
+}
+
+// Log Events During Request Lifecycle
+logRequest(requestId, 'chat_start', { query, messageCount: messages.length });
+logRequest(requestId, 'rag_complete', ragMeta);
+logRequest(requestId, 'chat_complete', {
+  duration: Date.now() - startTime,
+  tokens: totalTokens,
+  ragSuccess: metadata.ragSuccess
+});
+```
+
+**Log Event Types**:
+- `chat_start` - Request initialization with query and message count
+- `rag_complete` - RAG context retrieval with strategy and article count
+- `stream_creation_error` - Gemini stream creation failures
+- `stream_error` - Streaming response errors with tokens processed
+- `chat_error` - General chat errors with error codes and duration
+- `chat_complete` - Successful completion with performance metrics
+
+### Stream Error Handling Strategy
+
+**Status**: ✅ Implemented (Phase 2)
+
+**Error Handling Flow**:
+```
+Client Request → Request ID Assignment → RAG Context Fetching
+                ↓
+           Stream Creation Attempt
+                ↓
+    ┌─────────────────────────────────┐
+    │   Stream Creation Success?      │
+    └─────────┬───────────────────────┘
+              │ YES                   │ NO
+              ▼                        ▼
+    Write Success Metadata    Write Error Metadata
+    Response Headers            Response Headers
+              │                        │
+              ▼                        ▼
+    Start Streaming           Write Error Message
+    AI Response               + [END] Marker
+              │
+              ▼
+    Stream Processing
+         (for await chunk)
+              │
+   ┌────────┼────────────────┐
+   │        │                 │
+   ▼        ▼                 ▼
+Success   Stream Error     Stream Complete
+   │        │                 │
+   │        ▼                 ▼
+   │    Log + Throw      Log + Write [END]
+   │    Error            Success Metrics
+   └─────────────────────────┘
+```
+
+**Error Categorization**:
+```javascript
+// Stream Creation Errors
+- GEMINI_API_KEY not configured
+- Invalid messages array
+- Model initialization failure
+- Network connectivity issues
+
+// Stream Processing Errors
+- Token limit exceeded
+- Content policy violations
+- Network interruptions during streaming
+- Model response generation failures
+
+// RAG Context Errors
+- Wikipedia API timeouts
+- Cache retrieval failures
+- Multi-tier search strategy failures
+```
+
+**Client-Side Error Recovery**:
+```javascript
+// Phase 2 Error Handling Pattern
+try {
+  const response = await fetch('/api/gemini/chat', {...});
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const text = await response.text();
+  const metadata = extractMetadata(text);
+
+  if (!metadata.success) {
+    // Handle structured error from backend
+    throw new Error(metadata.error);
+  }
+
+  // Process successful response
+  const content = extractContent(text);
+  return { metadata, content };
+
+} catch (error) {
+  // Log with request ID if available
+  console.error(`[${requestId}] Chat error:`, error);
+
+  // Show user-friendly error
+  const userMessage = error.message.includes('API')
+    ? 'Không thể kết nối đến AI. Vui lòng thử lại sau.'
+    : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+
+  return { error: userMessage };
+}
+```
+
+---
+
 ## Integration Points
 
 ### Current Integrations
@@ -984,6 +1181,8 @@ if (getTimeRemaining() > 0) {
    - Model: `gemini-2.0-flash-001`
    - Features: Streaming chat, RAG context
    - Authentication: API key (env var)
+   - Response Format: Metadata headers + streaming content + [END] marker
+   - Error Handling: Structured errors with request ID tracking
 
 ### Future Integration Points
 
