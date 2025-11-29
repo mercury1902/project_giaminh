@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { events as allEvents, dynasties, periods } from './data/events.js'
 import AiHistory from './pages/AiHistory'
+import { WikipediaSummary } from './components/WikipediaSummary'
 
 function Header() {
   const location = useLocation()
@@ -206,6 +207,11 @@ function EventDetailModal({ event, isOpen, onClose, getPeriodColor }) {
               <p className="details-hint">Bạn có thể chỉnh sửa trong file <code>src/data/events.js</code> để thêm nội dung chi tiết cho sự kiện này.</p>
             </div>
           )}
+
+          <div className="event-modal-section">
+            <h3 className="section-title">Thông tin từ Wikipedia</h3>
+            <WikipediaSummary title={event.title} language="vi" />
+          </div>
         </div>
       </div>
     </div>
