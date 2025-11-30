@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import GeminiChatPanel from './components/gemini-chat-panel.jsx'
 import { events as allEvents, dynasties, periods } from './data/events.js'
-import AiHistory from './pages/AiHistory'
+import AiHistorySearch from './pages/ai-history-search.jsx'
 import { WikipediaSummary } from './components/WikipediaSummary'
+import Typography from './components/Typography'
+import PeriodBadge from './components/PeriodBadge'
+import MobileTimeline from './components/MobileTimeline'
 
 function Header() {
   const location = useLocation()
@@ -63,29 +67,132 @@ function Hero({ stats }) {
   return (
     <section id="home" className="hero-section" aria-labelledby="hero-title">
       <div className="container hero-inner">
-        <div className="hero-copy">
-          <h1 id="hero-title">Khám phá lịch sử Việt Nam</h1>
-          <p className="lead">Giao diện hiện đại, tông màu sáng, nội dung súc tích. Tương tác với timeline các sự kiện lớn và tìm kiếm nhanh chóng.</p>
-          <div className="hero-actions">
-            <a className="btn btn-primary" href="#timeline" onClick={(e) => { e.preventDefault(); document.querySelector('#timeline').scrollIntoView({ behavior: 'smooth' }); }}>Khám phá Timeline</a>
-            <Link className="btn btn-ghost" to="/ai-history">Thử tính năng AI</Link>
+        <div className="hero-content">
+          <div className="hero-primary">
+            <Typography
+              as="h1"
+              variant="viet-heading"
+              size="6xl"
+              weight="700"
+              className="hero-title mb-4"
+              id="hero-title"
+            >
+              Khám phá lịch sử Việt Nam
+            </Typography>
+            <Typography
+              as="h2"
+              variant="viet-heading"
+              size="2xl"
+              weight="600"
+              color="primary"
+              className="hero-subtitle mb-6"
+            >
+              Hành trình 4000 năm văn hiến qua lăng kính chuyên gia
+            </Typography>
+            <Typography
+              variant="viet-body"
+              size="lg"
+              color="muted"
+              className="hero-description mb-8"
+            >
+              Trải nghiệm lịch sử Việt Nam với giao diện chuyên nghiệp, nội dung xác thực, và công nghệ tìm kiếm thông minh. Khám phá timeline tương tác, từ thời Hồng Bàng đến hiện đại.
+            </Typography>
           </div>
+          <div className="hero-secondary">
+          <div className="hero-actions">
+            <a
+              className="btn btn-primary btn-large"
+              href="#timeline"
+              onClick={(e) => { e.preventDefault(); document.querySelector('#timeline').scrollIntoView({ behavior: 'smooth' }); }}
+            >
+              <span className="btn-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
+                  <path d="M2 17L12 22L22 17"/>
+                  <path d="M2 12L12 17L22 12"/>
+                </svg>
+              </span>
+              <Typography variant="viet-label" size="sm">
+                Bắt đầu khám phá
+              </Typography>
+            </a>
+            <Link className="btn btn-secondary btn-large" to="/ai-history">
+              <span className="btn-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                </svg>
+              </span>
+              <Typography variant="viet-label" size="sm">
+                Thử nghiệm AI Lịch sử
+              </Typography>
+            </Link>
+          </div>
+        </div>
         </div>
         <div className="hero-visual" aria-hidden="true">
           <div className="visual-card">
             <div className="visual-gradient"></div>
             <div className="visual-stats">
-              <div>
-                <span className="stat-number">{stats.numEvents}</span>
-                <span className="stat-label">Sự kiện</span>
+              <div className="stat-item">
+                <Typography
+                  variant="viet-heading"
+                  size="3xl"
+                  weight="800"
+                  className="stat-number"
+                >
+                  {stats.numEvents}+
+                </Typography>
+                <Typography
+                  variant="viet-label"
+                  size="xs"
+                  color="muted"
+                  className="stat-label"
+                >
+                  Sự kiện lịch sử
+                </Typography>
               </div>
-              <div>
-                <span className="stat-number">{stats.numCenturies}</span>
-                <span className="stat-label">Thế kỷ</span>
+
+              <div className="stat-divider"></div>
+
+              <div className="stat-item">
+                <Typography
+                  variant="viet-heading"
+                  size="3xl"
+                  weight="800"
+                  className="stat-number"
+                >
+                  {stats.numCenturies}
+                </Typography>
+                <Typography
+                  variant="viet-label"
+                  size="xs"
+                  color="muted"
+                  className="stat-label"
+                >
+                  Thế kỷ văn minh
+                </Typography>
               </div>
-              <div>
-                <span className="stat-number">{stats.numDynasties}</span>
-                <span className="stat-label">Triều đại</span>
+
+              <div className="stat-divider"></div>
+
+              <div className="stat-item">
+                <Typography
+                  variant="viet-heading"
+                  size="3xl"
+                  weight="800"
+                  className="stat-number"
+                >
+                  {stats.numDynasties}
+                </Typography>
+                <Typography
+                  variant="viet-label"
+                  size="xs"
+                  color="muted"
+                  className="stat-label"
+                >
+                  Triều đại huy hoàng
+                </Typography>
               </div>
             </div>
           </div>
@@ -216,7 +323,19 @@ function Timeline({ events }) {
   const [dynasty, setDynasty] = useState('all')
   const [activeIndex, setActiveIndex] = useState(0)
   const [selectedEvent, setSelectedEvent] = useState(null)
+  const [isMobile, setIsMobile] = useState(false)
   const railRef = useRef(null)
+
+  // Mobile detection for Vietnamese users
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const filtered = useMemo(() => {
     return events.filter(e => (period === 'all' || e.period === period) && (dynasty === 'all' || e.dynasty === dynasty))
@@ -258,18 +377,40 @@ function Timeline({ events }) {
     <section id="timeline" className="timeline-section section" aria-labelledby="timeline-title">
       <div className="container">
         <div className="section-header">
-          <h2 id="timeline-title">Timeline các sự kiện lớn</h2>
+          <Typography
+            as="h2"
+            variant="viet-heading"
+            size="4xl"
+            id="timeline-title"
+            className="mb-6"
+          >
+            Timeline các sự kiện lớn
+          </Typography>
           <div className="controls">
             <label className="control">
-              <span>Thời kỳ</span>
-              <select value={period} onChange={e => setPeriod(e.target.value)} aria-label="Lọc theo thời kỳ">
+              <Typography variant="viet-label" size="xs" color="muted">
+                Thời kỳ
+              </Typography>
+              <select
+                value={period}
+                onChange={e => setPeriod(e.target.value)}
+                aria-label="Lọc theo thời kỳ"
+                className="mt-1"
+              >
                 <option value="all">Tất cả</option>
                 {periods.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </label>
             <label className="control">
-              <span>Triều đại</span>
-              <select value={dynasty} onChange={e => setDynasty(e.target.value)} aria-label="Lọc theo triều đại">
+              <Typography variant="viet-label" size="xs" color="muted">
+                Triều đại
+              </Typography>
+              <select
+                value={dynasty}
+                onChange={e => setDynasty(e.target.value)}
+                aria-label="Lọc theo triều đại"
+                className="mt-1"
+              >
                 {dynOptions.map(d => <option key={d} value={d}>{d === 'all' ? 'Tất cả' : d}</option>)}
               </select>
             </label>
@@ -381,6 +522,21 @@ function Search({ events }) {
   )
 }
 
+function FloatingChatButton({ onToggle }) {
+  return (
+    <button
+      className="floating-chat-btn"
+      onClick={onToggle}
+      aria-label="Mở trợ lý Gemini lịch sử Việt Nam"
+      title="Hỏi về lịch sử Việt Nam"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    </button>
+  )
+}
+
 function Footer() {
   const year = new Date().getFullYear()
   return (
@@ -405,6 +561,7 @@ function HomePage({ stats, allEvents }) {
 }
 
 export default function App() {
+  const [chatOpen, setChatOpen] = useState(false);
   const stats = useMemo(() => {
     const numEvents = allEvents.length
     const centuries = new Set(allEvents.map(e => Math.floor(e.year / 100)))
@@ -443,10 +600,12 @@ export default function App() {
       <main id="main">
         <Routes>
           <Route path="/" element={<HomePage stats={stats} allEvents={allEvents} />} />
-          <Route path="/ai-history" element={<AiHistory />} />
+          <Route path="/ai-history" element={<AiHistorySearch />} />
         </Routes>
       </main>
       <Footer />
+      <FloatingChatButton onToggle={() => setChatOpen(true)} />
+      <GeminiChatPanel isOpen={chatOpen} onClose={() => setChatOpen(false)} />
     </>
   )
 }
