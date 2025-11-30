@@ -1,58 +1,122 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
+import { fetchWithBackendFallback } from '../utils/wikipedia-api.js'
 
-export default function AiHistory() {
+/**
+ * AI History page - Wikipedia search integration
+ * @param {Object} props
+ * @param {string} [props.apiBaseUrl='/api'] - API base URL for fetch
+ * @returns {JSX.Element}
+ */
+export default function AiHistory({ apiBaseUrl = '/api' }) {
   const [query, setQuery] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [results, setResults] = useState([])
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault()
+    const trimmedQuery = query.trim()
+    if (!trimmedQuery) {
+      setError('Vui lòng nhập từ khóa tìm kiếm')
+      setResults([])
+      return
+    }
+    setLoading(true)
+    setError('')
+    setResults([])
+    try {
+      // Use enhanced fetch with fallback mechanism
+      const data = await fetchWithBackendFallback(trimmedQuery, apiBaseUrl, 5, 'vi')
+
+      if (data.error && !data.fromFallback) {
+        // If backend error and no fallback, show error
+        throw new Error(data.error)
+      }
+
+      // Set results from either backend or fallback
+      setResults(data.pages || [])
+
+      // Show info message if fallback was used
+      if (data.fromFallback && data.found) {
+        console.log('Sử dụng kết quả từ trực tiếp Wikipedia API:', data.message)
+      } else if (data.fromFallback && !data.found) {
+        console.log('Không tìm thấy kết quả từ trực tiếp Wikipedia API')
+      }
+
+    } catch (err) {
+      const errorMessage = err.message || 'Đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại.'
+      console.error('Wikipedia search error:', err)
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }, [query, apiBaseUrl])
 
   return (
-    <section className="section" style={{ minHeight: '60vh' }}>
+    <section className="ai-history-section section" style={{ minHeight: '60vh' }}>
       <div className="container">
         <div className="section-header">
-          <h2 className="section-title">Lịch sử với AI</h2>
+          <h2 className="section-title">Tìm kiếm Lịch sử với Wikipedia</h2>
         </div>
-        
-        <div className="timeline-wrap" style={{ padding: '40px', textAlign: 'center' }}>
-          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <div style={{ 
-              width: '80px', 
-              height: '80px', 
-              background: 'linear-gradient(135deg, var(--primary), var(--accent))', 
-              borderRadius: '20px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              margin: '0 auto 24px',
-              color: 'white'
-            }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
-                <path d="M12 12L2.1 12.1"></path>
-                <path d="M12 12l8.5-8.5"></path>
-              </svg>
-            </div>
-            
-            <h3 style={{ fontSize: '24px', marginBottom: '16px' }}>Trợ lý Lịch sử AI (Sắp ra mắt)</h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '32px', lineHeight: '1.6' }}>
-              Tính năng này sẽ cho phép bạn hỏi đáp trực tiếp với các nhân vật lịch sử hoặc tra cứu thông tin qua Wikipedia AI.
-            </p>
 
-            <div className="search-form" style={{ justifyContent: 'center' }}>
-              <input 
-                type="text" 
-                placeholder="Đặt câu hỏi cho AI..." 
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                disabled
-                style={{ maxWidth: '400px', opacity: 0.7 }}
-              />
-              <button className="btn btn-primary" disabled style={{ opacity: 0.7 }}>
-                Gửi
-              </button>
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '16px' }}>
-              * API Wikipedia AI đang được tích hợp.
-            </p>
+        <form className="search-form" onSubmit={handleSubmit} role="search">
+          <div className="search-input-group">
+            <input
+              type="search"
+              className="search-input"
+              placeholder="Nhập từ khóa lịch sử (ví dụ: lịch sử, Lý Thái Tổ)..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Từ khóa tìm kiếm"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              className={`search-submit btn ${loading ? 'btn-disabled' : 'btn-primary'}`}
+              disabled={loading}
+              aria-label="Tìm kiếm"
+            >
+              {loading ? 'Đang tìm...' : 'Tìm kiếm'}
+            </button>
           </div>
-        </div>
+        </form>
+
+        {error && (
+          <div className="error-message" role="alert" aria-live="assertive">
+            {error}
+          </div>
+        )}
+
+        {loading && (
+          <div className="loading-spinner" role="status" aria-label="Đang tải kết quả tìm kiếm">
+            <div className="spinner"></div>
+          </div>
+        )}
+
+        {results.length > 0 && (
+          <div className="search-results-grid">
+            {results.map((result) => (
+              <article key={result.id || result.title} className="history-card">
+                {result.thumbnail?.source && (
+                  <img
+                    src={result.thumbnail.source}
+                    alt={result.title}
+                    className="history-card-image"
+                    loading="lazy"
+                  />
+                )}
+                <div className="history-card-content">
+                  <h3 className="history-card-title">
+                    <a href={result.url} target="_blank" rel="noopener noreferrer">
+                      {result.title || 'Untitled'}
+                    </a>
+                  </h3>
+                  <p className="history-card-desc">{result.description || 'No description available'}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   )

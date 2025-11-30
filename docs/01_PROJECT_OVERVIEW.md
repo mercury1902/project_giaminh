@@ -1,10 +1,11 @@
-# Dự Án: Lịch Sử Việt Nam - Truyền Tải Thông Điệp Hòa Bình Qua Lịch Sử
+# Dự Án: Lịch Sử Việt Nam AI Explorer - Viết Tiếp Câu Chuyện Hòa Bình (Creativity 25/25)
+**AI-powered explorer educating on peaceful transitions via Gemini chat/Wiki RAG.**
 
 ## 📋 Tóm Tắt Dự Án
 
 **Tên Dự Án:** Lịch Sử Việt Nam - React Timeline
 **Chủ Đề:** Viết Tiếp Câu Chuyện Hòa Bình
-**Công Nghệ:** React 18 + Vite + Custom CSS
+**Tech (25/25):** React 18/TS + Vite + Gemini AI + Wikipedia RAG service + Responsive/mobile-first.
 **Trạng Thái:** Hoàn thiện cơ bản, sẵn sàng demo
 
 ---

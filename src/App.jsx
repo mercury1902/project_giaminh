@@ -48,7 +48,7 @@ function Header() {
                 <Link to="/#search">Tìm kiếm</Link>
               )}
             </li>
-            <li><Link to="/ai-history" className={location.pathname === '/ai-history' ? 'active-link' : ''}>Lịch sử với AI</Link></li>
+            <li><Link to="/ai-history" className={location.pathname === '/ai-history' ? 'active-link' : ''}>Lịch sử</Link></li>
             <li>
               {isHome ? (
                 <a href="#about" onClick={(e) => { e.preventDefault(); scrollTo('#about'); }}>Khái quát</a>
@@ -124,7 +124,7 @@ function Hero({ stats }) {
                 </svg>
               </span>
               <Typography variant="viet-label" size="sm">
-                Thử nghiệm AI Lịch sử
+                Tìm hiểu lịch sử
               </Typography>
             </Link>
           </div>
@@ -541,9 +541,82 @@ function Footer() {
   const year = new Date().getFullYear()
   return (
     <footer className="site-footer" role="contentinfo">
-      <div className="container footer-inner">
-        <p>© {year} Lịch sử Việt Nam. Thiết kế hiện đại, tối ưu trải nghiệm.</p>
-        <a href="#home" className="back-to-top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-label="Lên đầu trang">Lên đầu trang ↑</a>
+      <div className="container">
+        <div className="footer-content">
+          {/* Project Info */}
+          <div className="footer-section footer-project">
+            <Typography
+              as="h3"
+              variant="viet-heading"
+              size="sm"
+              weight="600"
+              className="footer-title mb-3"
+            >
+              Sản phẩm học sinh
+            </Typography>
+            <div className="footer-info">
+              <div className="info-item">
+                <span className="info-label">Học sinh:</span>
+                <span className="info-value">Phạm Lê Nhật Minh</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Cơ sở:</span>
+                <span className="info-value">Teky 21 Hoàng Mai</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Hướng dẫn:</span>
+                <span className="info-value">Thầy Nguyễn Mạnh Quý</span>
+              </div>
+            </div>
+          </div>
+
+          {/* About */}
+          <div className="footer-section footer-about">
+            <Typography
+              as="h3"
+              variant="viet-heading"
+              size="sm"
+              weight="600"
+              className="footer-title mb-3"
+            >
+              Về dự án
+            </Typography>
+            <Typography
+              variant="viet-body"
+              size="xs"
+              color="muted"
+              className="footer-description"
+            >
+              Timeline lịch sử Việt Nam tương tác, với tìm kiếm thông minh và tích hợp Wikipedia.
+            </Typography>
+          </div>
+
+          {/* Quick Links */}
+          <div className="footer-section footer-links">
+            <Typography
+              as="h3"
+              variant="viet-heading"
+              size="sm"
+              weight="600"
+              className="footer-title mb-3"
+            >
+              Điều hướng
+            </Typography>
+            <nav className="footer-nav" aria-label="Điều hướng footer">
+              <a href="#home" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Trang chủ</a>
+              <a href="#timeline" onClick={(e) => { e.preventDefault(); document.querySelector('#timeline')?.scrollIntoView({ behavior: 'smooth' }); }}>Timeline</a>
+              <a href="#search" onClick={(e) => { e.preventDefault(); document.querySelector('#search')?.scrollIntoView({ behavior: 'smooth' }); }}>Tìm kiếm</a>
+            </nav>
+          </div>
+        </div>
+
+        {/* Footer Bottom */}
+        <div className="footer-bottom">
+          <Typography variant="viet-label" size="xs" color="muted" className="footer-copyright">
+            © {year} Lịch sử Việt Nam. Thiết kế hiện đại, tối ưu trải nghiệm.
+          </Typography>
+          <a href="#home" className="back-to-top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} aria-label="Lên đầu trang">Lên đầu trang ↑</a>
+        </div>
       </div>
     </footer>
   )

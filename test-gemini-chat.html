@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Gemini Chat - Vietnamese History</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Lora', serif;
+      background: #f5f5f5;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      background: #D9AE8E;
+      color: #1A1A1A;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #fafafa;
+    }
+
+    .message {
+      margin-bottom: 15px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      text-align: right;
+    }
+
+    .message-content {
+      display: inline-block;
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 8px;
+      word-wrap: break-word;
+    }
+
+    .message.user .message-content {
+      background: #D9AE8E;
+      color: #1A1A1A;
+    }
+
+    .message.assistant .message-content {
+      background: #E5E5E5;
+      color: #1A1A1A;
+    }
+
+    .loading {
+      display: inline-block;
+      background: #E5E5E5;
+      color: #1A1A1A;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-style: italic;
+    }
+
+    .input-area {
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #ddd;
+      display: flex;
+      gap: 10px;
+    }
+
+    .input-area form {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: 'Lora', serif;
+      font-size: 14px;
+    }
+
+    .input-area input:focus {
+      outline: none;
+      border-color: #D9AE8E;
+      box-shadow: 0 0 0 2px rgba(217, 174, 142, 0.2);
+    }
+
+    .input-area button {
+      padding: 12px 24px;
+      background: #D9AE8E;
+      color: #1A1A1A;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .input-area button:hover {
+      background: #C41E3A;
+      color: white;
+    }
+
+    .input-area button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .error {
+      background: #fee;
+      color: #c41e3a;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border-left: 4px solid #c41e3a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤖 Gemini History Chat</h1>
+      <p>Ask about Vietnamese history (Powered by Google Gemini)</p>
+    </div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+      <form id="chatForm">
+        <input
+          type="text"
+          id="input"
+          placeholder="E.g., Hãy kể về Trần Hưng Đạo..."
+          autocomplete="off"
+        >
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const messagesDiv = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const form = document.getElementById('chatForm');
+    const API_URL = 'http://localhost:3000/api/gemini/chat';
+
+    let messages = [];
+
+    function scrollToBottom() {
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function addMessage(role, content) {
+      const message = { role, content };
+      messages.push(message);
+
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+      messagesDiv.appendChild(div);
+      scrollToBottom();
+
+      return div;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showLoading() {
+      const div = document.createElement('div');
+      div.className = 'message assistant';
+      div.id = 'loading';
+      div.innerHTML = '<div class="loading">⏳ Đang suy nghĩ...</div>';
+      messagesDiv.appendChild(div);
+      scrollToBottom();
+    }
+
+    function removeLoading() {
+      const loading = document.getElementById('loading');
+      if (loading) loading.remove();
+    }
+
+    async function sendMessage(userMessage) {
+      // Add user message
+      addMessage('user', userMessage);
+      input.value = '';
+      input.disabled = true;
+      form.querySelector('button').disabled = true;
+
+      // Show loading
+      showLoading();
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [...messages, { role: 'user', content: userMessage }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`);
+        }
+
+        removeLoading();
+
+        // Create assistant message div
+        const assistantDiv = document.createElement('div');
+        assistantDiv.className = 'message assistant';
+        assistantDiv.id = 'streaming';
+        assistantDiv.innerHTML = '<div class="message-content" id="streaming-content"></div>';
+        messagesDiv.appendChild(assistantDiv);
+
+        const contentDiv = document.getElementById('streaming-content');
+        let assistantMessage = '';
+
+        // Stream response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          assistantMessage += chunk;
+          contentDiv.innerHTML = escapeHtml(assistantMessage);
+          scrollToBottom();
+        }
+
+        // Save to message history
+        messages.push({ role: 'assistant', content: assistantMessage });
+        document.getElementById('streaming').id = '';
+
+      } catch (error) {
+        removeLoading();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'message assistant';
+        errorDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+        messagesDiv.appendChild(errorDiv);
+        scrollToBottom();
+      } finally {
+        input.disabled = false;
+        form.querySelector('button').disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (message) {
+        sendMessage(message);
+      }
+    });
+
+    // Welcome message
+    addMessage('assistant', 'Xin chào! Tôi là trợ lý lịch sử Gemini. Hãy hỏi tôi về bất kỳ sự kiện lịch sử Việt Nam nào bạn muốn biết. 👋');
+    input.focus();
+  </script>
+</body>
+</html>

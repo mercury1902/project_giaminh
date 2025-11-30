@@ -124,15 +124,12 @@ const GeminiChatPanel = ({ isOpen, onClose }) => {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Prepare request
-      const messagesForAPI = [...messages, userMsg];
-
       setLoadingPhase('gemini');
 
       const res = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: messagesForAPI }),
+        body: JSON.stringify({ message: msg }),
         signal: abortControllerRef.current.signal
       });
 

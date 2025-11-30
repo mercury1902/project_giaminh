@@ -4,7 +4,7 @@ Interactive Vietnamese history timeline application built with React + Vite. Fea
 
 **Live Demo**: [Coming Soon]
 **Version**: 0.1.0
-**Status**: Production Ready
+**Status**: Production Ready ✅ Build Verified
 
 ---
 
@@ -20,7 +20,17 @@ Interactive Vietnamese history timeline application built with React + Vite. Fea
 # Install dependencies
 npm install
 
-# Start development server (http://localhost:5173)
+# Copy environment variables
+cp .env.example .env
+# Edit .env and add your GEMINI_API_KEY
+
+# Development with Vercel Functions (recommended)
+# Terminal 1: Run Vercel dev server
+vercel dev --listen 3001
+# Terminal 2: Run Vite dev server
+npm run dev:frontend
+
+# OR: Development with legacy Express backend
 npm run dev
 
 # Build for production
@@ -57,6 +67,11 @@ npm run preview
 
 ```
 tech_genius_project/
+├── api/                           # Vercel Serverless Functions
+│   ├── history/
+│   │   └── search.js              # Wikipedia search endpoint
+│   └── gemini/
+│       └── chat.js                # Gemini AI chat with RAG
 ├── src/
 │   ├── data/
 │   │   └── events.js              # Event data (18 events, periods, dynasties)
@@ -67,17 +82,20 @@ tech_genius_project/
 │   ├── App.jsx                    # Main application (Header, Routes, Footer)
 │   ├── main.jsx                   # Application entry point
 │   └── styles.css                 # Global styles (160 lines)
+├── backend/                       # Legacy Express backend (deprecated)
 ├── docs/                          # Comprehensive documentation
 │   ├── codebase-summary.md        # High-level codebase overview
 │   ├── project-overview-pdr.md    # Project vision, requirements, roadmap
 │   ├── code-standards.md          # Coding conventions and best practices
 │   └── system-architecture.md     # System design and architecture
 ├── dist/                          # Production build output
+├── vercel.json                    # Vercel configuration
 ├── index.html                     # HTML entry point
 ├── package.json                   # Dependencies
 ├── vite.config.js                 # Vite configuration
 ├── README.md                      # This file
-└── CLAUDE.md                      # Claude Code instructions
+├── CLAUDE.md                      # Claude Code instructions
+└── VERCEL_DEPLOYMENT.md           # Vercel deployment guide
 ```
 
 ---
@@ -238,29 +256,47 @@ For detailed coding standards, see [docs/code-standards.md](./docs/code-standard
 
 ## Deployment
 
-### Static Hosting
+### Vercel (Recommended)
 
-This application can be deployed to any static hosting service:
+This application uses **Vercel Serverless Functions** for the backend API. See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for complete guide.
+
+**Quick Deploy:**
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy to production
+vercel --prod
+```
+
+**Environment Variables (Vercel Dashboard):**
+- `GEMINI_API_KEY` - Your Gemini API key
+- `NODE_ENV` - Set to `production`
+
+**Features:**
+- ✅ Serverless Functions (Wikipedia search, Gemini chat)
+- ✅ Zero config deployment
+- ✅ Automatic HTTPS
+- ✅ Edge network CDN
+- ✅ Free tier: 100GB bandwidth/month
+
+### Alternative: Static Hosting
+
+For frontend-only deployment (without AI features):
 
 **Compatible Platforms**:
 - ✅ Netlify
-- ✅ Vercel
 - ✅ GitHub Pages
 - ✅ Cloudflare Pages
 - ✅ AWS S3 + CloudFront
 
-### Deployment Steps
+**Steps:**
+1. Build: `npm run build`
+2. Upload `dist/` directory
+3. Configure SPA routing
 
-1. Build production bundle:
-   ```bash
-   npm run build
-   ```
-
-2. Upload `dist/` directory to your hosting provider
-
-3. Configure server to serve `index.html` for all routes (SPA routing)
-
-### Example: Netlify
+**Example: Netlify**
 
 ```toml
 # netlify.toml

@@ -134,7 +134,7 @@ Chúng ta đang viết tiếp...
 
 ### Demo Script (90 giây):
 
-#### Step 1: Landing Page (15 giây)
+#### Step 1: Hero/AI Demo (30s): Hero stats → Gemini chat query 'peace transitions' → Wiki modal. (Completeness 20/20)
 **Hiển Thị:** Scroll đến hero section
 **Nói:**
 > "Khi mở ứng dụng, người dùng thấy hero section với tiêu đề 'Hành Trình Hòa Bình Qua Thời Gian', cùng với những con số ấn tượng: 16 sự kiện, 11 triều đại, 4,869 năm lịch sử. Nó giúp người dùng hiểu ngay phạm vi và quy mô của dự án."

@@ -3,3 +3,15 @@ node_modules
 .env
 .env.local
 .env.*.local
+.vercel
+.claude
+.md
+.opencode
+docs
+phans
+plans$(date +%y%m%d)-0921-hero-section-ui-ux-upgrade
+plans251129-2140-gemini-chatbot-integration
+Wikipedia Core REST API
+claude_code_zai_env.sh
+CLAUDE.md
+tiêu chí chấm.md

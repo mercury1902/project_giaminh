@@ -6,9 +6,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        // Proxy to Vercel dev server (run: vercel dev --listen 3001)
+        // For production, Vercel handles routing automatically
+        target: process.env.VITE_API_URL || 'http://localhost:3002',
         changeOrigin: true,
-        // Keep /api prefix - backend expects /api/... routes
         rewrite: (path) => path
       }
     }
