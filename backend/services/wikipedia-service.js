@@ -1,160 +1,423 @@
-import fetch from 'node-fetch';
+import { NodeCache } from 'node-cache';
 
-// Simple LRU cache implementation
-class LRUCache {
-  constructor(maxSize = 100, ttl = 60 * 60 * 1000) { // 1 hour TTL
-    this.maxSize = maxSize;
-    this.ttl = ttl;
-    this.cache = new Map();
-    this.timestamps = new Map();
-    this.hits = 0;
-    this.misses = 0;
-  }
+// Advanced Vietnamese Query Optimization System
+export class VietnameseWikipediaService {
+  constructor() {
+    this.cache = new NodeCache({
+      stdTTL: 3600,
+      checkperiod: 600
+    });
 
-  get(key) {
-    if (!this.cache.has(key)) {
-      this.misses++;
-      return null;
-    }
+    // Vietnamese historical terms optimization
+    this.vietnameseTerms = {
+      // Dynasty names with variations
+      dynasties: {
+        'hùng vương': ['hùng vương', 'vuang vuong'],
+        'ân lạc': ['an duong', 'au lac'],
+        'triệu đà': ['trieu da', 'zhao da'],
+        'lý nam': ['ly nam', 'li yue', 'li nam quoc', 'li yue quoc'],
+        'trần': ['tran', 'tran dynasty'],
+        'lê': ['le', 'le dynasty'],
+        'hồ': ['ho', 'ho dynasty'],
+        'nguyễn': ['nguyen', 'nguyen dynasty'],
+        'tây sơn': ['tay son', 'tay son'],
+        'mạc': ['mac', 'mac dynasty'],
+        'hậu lê': ['hau le', 'le lao']
+      },
 
-    const timestamp = this.timestamps.get(key);
-    if (Date.now() - timestamp > this.ttl) {
-      this.cache.delete(key);
-      this.timestamps.delete(key);
-      this.misses++;
-      return null;
-    }
+      // Historical places with variations
+      places: {
+        'thăng long': ['thang long', 'thanglong', 'dong kinh'],
+        'văn lang': ['van lang', 'van lang state'],
+        'bạch đằng': ['bach dang', 'bach giang', 'white river'],
+        'đà nẵng': ['da nang', 'danang', 'yangtze'],
+        'hà nội': ['ha noi', 'hanoi'],
+        'tây đô': ['tay do', 'taydo'],
+        'đông đô': ['dong do', 'dongdo'],
+        'hua anh': ['hua anh', 'huaxian', 'binh']
+      },
 
-    // Move to end (most recently used)
-    const value = this.cache.get(key);
-    this.cache.delete(key);
-    this.cache.set(key, value);
-    this.timestamps.delete(key);
-    this.timestamps.set(key, Date.now());
-    this.hits++;
-    return value;
-  }
-
-  set(key, value) {
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-      this.timestamps.delete(key);
-    }
-
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
-      this.timestamps.delete(firstKey);
-    }
-
-    this.cache.set(key, value);
-    this.timestamps.set(key, Date.now());
-  }
-
-  clear() {
-    this.cache.clear();
-    this.timestamps.clear();
-    this.hits = 0;
-    this.misses = 0;
-  }
-
-  stats() {
-    const total = this.hits + this.misses;
-    const hitRate = total === 0 ? 0 : ((this.hits / total) * 100).toFixed(2);
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize,
-      hits: this.hits,
-      misses: this.misses,
-      hitRate: `${hitRate}%`,
-      ttlMs: this.ttl
+      // Events and actions
+      events: {
+        'chiến thắng': ['chien thang', 'victory', 'battle won'],
+        'khởi nghĩa': ['khoi nghia', 'insurrection', 'uprising'],
+        'dời đô': ['chuy do', 'move capital', 'relocate capital'],
+        'thống nhất': ['thong nhat', 'unified', 'reunified', 'reunification'],
+        'độc lập': ['doc lap', 'independence', 'independent']
+      }
     };
   }
-}
 
-class WikipediaService {
-  constructor() {
-    this.cache = new LRUCache();
-    this.baseUrl = 'https://vi.wikipedia.org/api/rest_v1';
-    this.maxRetries = 3;
-    this.timeout = 10000; // 10 seconds
-  }
+  // Multi-strategy Vietnamese search optimization
+  async searchVietnamese(query, language = 'vi', limit = 10) {
+    const startTime = Date.now();
 
-  async getSummary(title, language = 'vi') {
-    const cacheKey = `summary:${language}:${title}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached) {
-      return { ...cached, fromCache: true };
-    }
+    // Normalize Vietnamese text
+    const normalizedQuery = this.normalizeVietnameseText(query);
 
-    try {
-      const baseUrl = language === 'vi'
-        ? 'https://vi.wikipedia.org/api/rest_v1'
-        : `https://${language}.wikipedia.org/api/rest_v1`;
+    // Generate search strategies
+    const strategies = this.generateSearchStrategies(normalizedQuery);
 
-      const url = `${baseUrl}/page/summary/${encodeURIComponent(title)}`;
-      const data = await this._fetchWithRetry(url);
+    // Execute searches in parallel with timeouts
+    const searchPromises = strategies.slice(0, 4).map(async (strategy, index) => {
+      try {
+        const response = await this.searchWithStrategy(
+          strategy.keywords,
+          language,
+          8000, // 8 second timeout for parallel searches
+          `strategy-${index}`
+        );
+        return {
+          strategy: strategy.name,
+          keywords: strategy.keywords,
+          response,
+          duration: Date.now() - startTime,
+          fromCache: false
+        };
+      } catch (error) {
+        return {
+          strategy: strategy.name,
+          keywords: strategy.keywords,
+          response: null,
+          duration: Date.now() - startTime,
+          error: error.message,
+          fromCache: false
+        };
+      }
+    });
 
-      // Extract relevant fields
-      const summary = {
-        title: data.title,
-        description: data.description || '',
-        extract: data.extract || '',
-        thumbnail: data.thumbnail || null,
-        originalImage: data.originalimage || null,
-        url: data.content_urls?.desktop?.page || null,
-        language
+    // Wait for first successful response
+    const results = await Promise.allSettled(searchPromises);
+
+    // Process results
+    const successfulResults = results
+      .filter(result => result.response && result.response.success)
+      .sort((a, b) => a.duration - b.duration);
+
+    if (successfulResults.length > 0) {
+      const bestResult = successfulResults[0];
+
+      // Cache successful result
+      this.cache.set(`vi_${normalizedQuery}`, {
+        pages: bestResult.response.pages || [bestResult.response],
+        found: true,
+        language,
+        query: normalizedQuery,
+        fromCache: false,
+        timestamp: new Date().toISOString(),
+        strategy: bestResult.strategy,
+        keywords: bestResult.keywords,
+        queryTime: Date.now() - startTime
+      }, 3600); // 1 hour TTL
+
+      return {
+        query: normalizedQuery,
+        pages: bestResult.response.pages || [bestResult.response],
+        found: true,
+        language,
+        fromCache: false,
+        queryTime: Date.now() - startTime,
+        strategy: bestResult.strategy,
+        keywords: bestResult.keywords,
+        performance: {
+          totalDuration: Date.now() - startTime,
+          parallelStrategies: strategies.length,
+          successfulStrategy: bestResult.strategy,
+          cacheHit: false
+        }
       };
-
-      this.cache.set(cacheKey, summary);
-      return { ...summary, fromCache: false };
-    } catch (error) {
-      this._handleError(error);
     }
+
+    // Try fallback search if no success
+    const fallbackStrategies = this.generateFallbackStrategies(normalizedQuery);
+
+    for (const fallbackStrategy of fallbackStrategies.slice(0, 2)) {
+      try {
+        const response = await this.searchWithStrategy(
+          fallbackStrategy.keywords,
+          language,
+          12000, // 12 second timeout for fallbacks
+          'fallback'
+        );
+
+        if (response.success) {
+          this.cache.set(`vi_${normalizedQuery}`, {
+            pages: response.pages || [response],
+            found: true,
+            language,
+            query: normalizedQuery,
+            fromCache: false,
+            timestamp: new Date().toISOString(),
+            strategy: fallbackStrategy.name,
+            keywords: fallbackStrategy.keywords,
+            queryTime: Date.now() - startTime
+          }, 7200); // 2 hour TTL for fallbacks
+
+          return {
+            query: normalizedQuery,
+            pages: response.pages || [response],
+            found: true,
+            language,
+            fromCache: false,
+            queryTime: Date.now() - startTime,
+            strategy: fallbackStrategy.name,
+            keywords: fallbackStrategy.keywords,
+            performance: {
+              totalDuration: Date.now() - startTime,
+              fallbackUsed: true,
+              cacheHit: false
+            }
+          };
+        }
+      } catch (error) {
+        console.warn(`Fallback strategy ${fallbackStrategy.name} failed:`, error.message);
+      }
+    }
+
+    // Return no results if all failed
+    return {
+      query: normalizedQuery,
+      pages: [],
+      found: false,
+      language,
+      fromCache: false,
+      queryTime: Date.now() - startTime,
+      error: 'SEARCH_FAILED',
+      message: 'All search strategies failed for Vietnamese query'
+    };
   }
 
-  async search(query, limit = 10, language = 'vi') {
-    const cacheKey = `search:${language}:${query}:${limit}`;
+  // Generate multiple search strategies
+  generateSearchStrategies(query) {
+    const strategies = [];
+
+    // Strategy 1: Exact historical terms
+    const exactTerms = this.extractExactHistoricalTerms(query);
+    if (exactTerms.length > 0) {
+      strategies.push({
+        name: 'exact-historical',
+        keywords: exactTerms,
+        priority: 1
+      });
+    }
+
+    // Strategy 2: Dynasty names
+    const dynasties = this.extractDynastyTerms(query);
+    if (dynasties.length > 0) {
+      strategies.push({
+        name: 'dynasty-match',
+        keywords: dynasties,
+        priority: 2
+      });
+    }
+
+    // Strategy 3: Location terms
+    const places = this.extractLocationTerms(query);
+    if (places.length > 0) {
+      strategies.push({
+        name: 'location-match',
+        keywords: places,
+        priority: 3
+      });
+    }
+
+    // Strategy 4: Smart split for complex queries
+    const smartSplits = this.smartVietnameseSplit(query);
+    if (smartSplits.length > 0) {
+      strategies.push({
+        name: 'smart-split',
+        keywords: smartSplits,
+        priority: 4
+      });
+    }
+
+    return strategies;
+  }
+
+  // Generate fallback strategies
+  generateFallbackStrategies(query) {
+    const strategies = [];
+
+    // Extract short meaningful terms
+    const meaningfulTerms = this.extractMeaningfulTerms(query);
+    if (meaningfulTerms.length > 0) {
+      strategies.push({
+        name: 'meaningful-terms',
+        keywords: meaningfulTerms,
+        priority: 5
+      });
+    }
+
+    // Try single common Vietnamese historical terms
+    const commonTerms = ['hùng vương', 'thăng long', 'văn lang', 'bach dang', 'triệu da'];
+    const matchedCommonTerms = commonTerms.filter(term =>
+      query.toLowerCase().includes(term) ||
+      this.vietnameseTerms.dynasties[term]?.some(variant => query.toLowerCase().includes(variant))
+    );
+
+    if (matchedCommonTerms.length > 0) {
+      strategies.push({
+        name: 'common-historical',
+        keywords: matchedCommonTerms,
+        priority: 6
+      });
+    }
+
+    return strategies;
+  }
+
+  // Extract exact historical terms
+  extractExactHistoricalTerms(query) {
+    const terms = [];
+    const lowerQuery = query.toLowerCase();
+
+    // Check against our Vietnamese terms database
+    Object.entries(this.vietnameseTerms).forEach(([category, terms]) => {
+      if (category === 'events') {
+        Object.entries(terms).forEach(([term, variants]) => {
+          if (variants.some(variant => lowerQuery.includes(variant))) {
+            terms.push(term);
+          }
+        });
+      } else {
+        terms.forEach(term => {
+          if (Array.isArray(term)) {
+            if (term.some(variant => lowerQuery.includes(variant))) {
+              terms.push(term[0]); // Use main variant
+            }
+          } else if (lowerQuery.includes(term)) {
+            terms.push(term);
+          }
+        });
+      }
+    });
+
+    return [...new Set(terms)];
+  }
+
+  // Extract dynasty terms
+  extractDynastyTerms(query) {
+    const terms = [];
+    const lowerQuery = query.toLowerCase();
+
+    Object.entries(this.vietnameseTerms.dynasties).forEach(([dynasty, variants]) => {
+      if (variants.some(variant => lowerQuery.includes(variant))) {
+        terms.push(dynasty);
+      }
+    });
+
+    return terms;
+  }
+
+  // Extract location terms
+  extractLocationTerms(query) {
+    const terms = [];
+    const lowerQuery = query.toLowerCase();
+
+    Object.entries(this.vietnameseTerms.places).forEach(([place, variants]) => {
+      if (variants.some(variant => lowerQuery.includes(variant))) {
+        terms.push(place);
+      }
+    });
+
+    return terms;
+  }
+
+  // Smart Vietnamese text splitting
+  smartVietnameseSplit(query) {
+    const separators = ['–', '-', '•', '/', '"', "'"];
+    let terms = [];
+    let currentTerm = '';
+
+    for (let i = 0; i < query.length; i++) {
+      if (separators.includes(query[i])) {
+        if (currentTerm.trim().length >= 2 && currentTerm.trim().length <= 12) {
+          terms.push(currentTerm.trim());
+        }
+        currentTerm = '';
+      } else {
+        currentTerm += query[i];
+      }
+    }
+
+    if (currentTerm.trim().length >= 2 && currentTerm.trim().length <= 12) {
+      terms.push(currentTerm.trim());
+    }
+
+    return [...new Set(terms)];
+  }
+
+  // Extract meaningful terms
+  extractMeaningfulTerms(query) {
+    const words = query.split(/\s+/).filter(word => word.length >= 3);
+    const meaningfulWords = words.filter(word =>
+      !['và', 'của', 'cho', 'trong', 'tại', 'một', 'năm'].includes(word.toLowerCase()) &&
+      word.charAt(0) === word.charAt(0).toUpperCase()
+    );
+
+    return meaningfulWords;
+  }
+
+  // Vietnamese text normalization
+  normalizeVietnameseText(text) {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove combining diacritical marks
+      .replace(/[Đđ]/g, 'D') // Vietnamese 'D' normalization
+      .replace(/[Ăă]/g, 'a')
+      .replace(/[Ââ]/g, 'a')
+      .replace(/[Êê]/g, 'e')
+      .replace(/[Ôô]/g, 'o')
+      .replace(/[Ơơ]/g, 'o')
+      .replace(/[Ưư]/g, 'u')
+      .replace(/[Ấá]/g, 'a')
+      .replace(/[Ấả]/g, 'a')
+      .toLowerCase()
+      .trim();
+  }
+
+  // Search with specific strategy
+  async searchWithStrategy(keywords, language, timeout, strategyName) {
+    const searchPromises = keywords.slice(0, 2).map(keyword =>
+      this.searchWikipediaArticle(keyword, language, timeout, `${strategyName}-${keyword}`)
+    );
+
+    const results = await Promise.allSettled(searchPromises);
+
+    // Return first successful result
+    const successfulResults = results.filter(result => result.value && result.value.success);
+    if (successfulResults.length > 0) {
+      return successfulResults[0].value;
+    }
+
+    return null;
+  }
+
+  // Search Wikipedia article
+  async searchWikipediaArticle(title, language, timeout = 8000, source = 'search') {
+    const cacheKey = `vi_${this.normalizeVietnameseText(title)}`;
     const cached = this.cache.get(cacheKey);
+
     if (cached) {
-      return { ...cached, fromCache: true };
-    }
-
-    try {
-      const baseUrl = language === 'vi'
-        ? 'https://vi.wikipedia.org/api/rest_v1'
-        : `https://${language}.wikipedia.org/api/rest_v1`;
-
-      const url = `${baseUrl}/search/page?q=${encodeURIComponent(query)}&limit=${limit}`;
-      const data = await this._fetchWithRetry(url);
-
-      const results = {
-        query,
-        pages: (data.pages || []).map(page => ({
-          id: page.id,
-          title: page.title,
-          description: page.description || '',
-          thumbnail: page.thumbnail || null,
-          url: page.content_urls?.desktop?.page || null
-        })),
-        language
+      return {
+        ...cached,
+        fromCache: true,
+        source
       };
-
-      this.cache.set(cacheKey, results);
-      return { ...results, fromCache: false };
-    } catch (error) {
-      this._handleError(error);
     }
-  }
 
-  async _fetchWithRetry(url, retries = 0) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      const endpoint = process.env.WIKIPEDIA_API_ENDPOINT || 'https://vi.wikipedia.org/api/rest_v1';
+      const url = `${endpoint}/page/summary/${encodeURIComponent(title)}?redirect=true&origin=*`;
 
       const response = await fetch(url, {
+        method: 'GET',
         headers: {
-          'User-Agent': 'HistoryTimelineApp/1.0 (Vietnamese History Timeline)',
+          'User-Agent': 'LichSuVietNam/1.0',
+          'Accept-Language': `${language},vi;q=0.9,en;q=0.8`,
           'Accept': 'application/json'
         },
         signal: controller.signal
@@ -162,77 +425,75 @@ class WikipediaService {
 
       clearTimeout(timeoutId);
 
-      if (response.status === 404) {
-        const error = new Error('Bài viết không tìm thấy');
-        error.type = 'WIKIPEDIA_ERROR';
-        error.code = 'NOT_FOUND';
-        error.statusCode = 404;
-        throw error;
-      }
-
-      if (response.status === 429) {
-        if (retries < this.maxRetries) {
-          const backoff = Math.pow(2, retries) * 1000;
-          await new Promise(resolve => setTimeout(resolve, backoff));
-          return this._fetchWithRetry(url, retries + 1);
-        }
-        const error = new Error('Quá nhiều yêu cầu. Vui lòng thử lại sau.');
-        error.type = 'WIKIPEDIA_ERROR';
-        error.code = 'RATE_LIMIT';
-        error.statusCode = 429;
-        throw error;
-      }
-
       if (!response.ok) {
-        const error = new Error(`Lỗi Wikipedia API: ${response.status}`);
-        error.type = 'WIKIPEDIA_ERROR';
-        error.statusCode = response.status;
-        throw error;
+        if (response.status === 404) {
+          return {
+            success: false,
+            error: 'PAGE_NOT_FOUND',
+            message: `Article "${title}" not found on Wikipedia`,
+            statusCode: 404
+          };
+        }
+
+        throw new Error(`Wikipedia API error: ${response.status}`);
       }
 
       const data = await response.json();
-      return data;
+
+      const result = {
+        success: true,
+        title: data.title || title,
+        description: data.description || '',
+        extract: data.extract || '',
+        thumbnail: data.thumbnail?.source || null,
+        originalImage: data.originalimage?.source || null,
+        url: data.content_urls?.desktop?.page || `https://vi.wikipedia.org/wiki/${encodeURIComponent(title)}`,
+        language,
+        fromCache: false,
+        source,
+        queryTime: Date.now()
+      };
+
+      // Cache successful result
+      this.cache.set(cacheKey, result, 1800); // 30 minutes
+
+      return result;
     } catch (error) {
-      if (retries < this.maxRetries && error.code !== 'NOT_FOUND') {
-        const backoff = Math.pow(2, retries) * 1000;
-        await new Promise(resolve => setTimeout(resolve, backoff));
-        return this._fetchWithRetry(url, retries + 1);
+      if (error.name === 'AbortError') {
+        return {
+          success: false,
+          error: 'TIMEOUT',
+          message: `Search timeout for "${title}" after ${timeout}ms`,
+          fromCache: false,
+          source
+        };
       }
-      throw error;
+
+      return {
+        success: false,
+        error: 'NETWORK_ERROR',
+        message: error.message,
+        fromCache: false,
+        source
+      };
     }
   }
 
-  _handleError(error) {
-    console.error('Wikipedia Service Error:', error.message);
-
-    if (error.type === 'WIKIPEDIA_ERROR') {
-      throw error;
-    }
-
-    // Network timeout
-    if (error.name === 'AbortError') {
-      const timeoutError = new Error('Hết thời gian chờ kết nối Wikipedia');
-      timeoutError.type = 'WIKIPEDIA_ERROR';
-      timeoutError.code = 'TIMEOUT';
-      timeoutError.statusCode = 504;
-      throw timeoutError;
-    }
-
-    // Network error
-    const networkError = new Error('Lỗi kết nối mạng');
-    networkError.type = 'WIKIPEDIA_ERROR';
-    networkError.code = 'NETWORK_ERROR';
-    networkError.statusCode = 503;
-    throw networkError;
-  }
-
+  // Cache stats
   getCacheStats() {
-    return this.cache.stats();
+    return this.cache.getStats();
   }
 
+  // Clear cache
   clearCache() {
-    this.cache.clear();
+    this.cache.flushAll();
+  }
+
+  // Search method (main entry point)
+  async search(query, limit = 5, language = 'vi') {
+    return this.searchVietnamese(query, language, limit);
   }
 }
 
-export const wikipediaService = new WikipediaService();
+// Export singleton instance
+export const wikipediaService = new VietnameseWikipediaService();
