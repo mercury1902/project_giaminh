@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 
-const GEMINI_API_KEY = "AIzaSyCr1cBvXFjb41WpF0YkpwcAlmY0C9YUMHw";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 export default function AiHistory() {
   const [query, setQuery] = useState('')
